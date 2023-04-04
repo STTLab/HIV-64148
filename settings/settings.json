@@ -1,0 +1,29 @@
+{
+    "softwares": {
+        "strainline"            : "strainline",
+        "snippy"                : "mamba run -n snippy snippy",
+        "blast"                 : "mamba run -n blast blastn",
+        "canu"                  : "mamba run -n consensus_asm canu",
+        "medaka"                : "mamba run -n consensus_asm medaka_consensus"
+    },
+    "pipeline": {
+        "settings": {
+            "strainline": {
+                "platform"      : "ont",
+                "mintrimlen"    : 1000,
+                "topk"          : 50,
+                "minoverlap"    : 1000,
+                "miniden"       : 0.99,
+                "minseedlen"    : 3000,
+                "maxoh"         : 30,
+                "iter"          : 2,
+                "maxgd"         : 0.01,
+                "maxld"         : 0.001,
+                "maxco"         : 5,
+                "min_abun"      : 0.02,
+                "rm_mis_asm"    : false,
+                "err_cor"       : true
+            }
+        }
+    }
+}
