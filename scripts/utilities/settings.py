@@ -1,6 +1,11 @@
 
+import os
 import json
-SETTINGS = 'D:\\HIV-64148\\HIV-64148\\settings\\settings.json'
+
+SETTINGS = f'{os.getcwd()}\\settings\\settings.json'
+
+if not os.path.exists(SETTINGS):
+    SETTINGS = f'/workflow/settings/settings.json'
 
 with open(SETTINGS, 'r') as f:
     global settings
