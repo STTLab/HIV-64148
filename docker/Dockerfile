@@ -97,7 +97,7 @@ RUN ["micromamba", "clean", "--all", "-y"]
 RUN ["pip","install", "biopython", "pandas", "numpy"]
 RUN ["pip", "install", "--upgrade", "numpy"]
 
-RUN "apt-get remove build essential -y"
+RUN apt-get remove -y build-essential
 
 COPY ../scripts /hiv64148/scripts
 COPY ../settings /hiv64148/settings
