@@ -4,7 +4,7 @@ import shutil
 import tempfile
 import subprocess
 from multiprocessing import cpu_count
-from ..utilities.settings import settings
+from utilities.settings import settings
 
 THREADS = cpu_count()
 
@@ -25,24 +25,25 @@ def reads_alignment(input_reads, reference, output, platform: str = 'map-ont', f
         'output': output
     }
 
-def strainline(input_fastq,
-               output_dir,
-               platform:str = 'ont',
-               mintrimlen:int = 1000,
-               topk:int = 50,
-               minoverlap:int = 1000,
-               miniden:float = 0.99,
-               minseedlen:int = 3000,
-               maxoh:int = 30,
-               iter:int = 2,
-               maxgd:float = 0.01,
-               maxld:float = 0.001,
-               maxco:int = 5,
-               min_abun:float = 0.02,
-               rm_mis_asm: bool = False,
-               err_cor:bool = True,
-               threads:int = THREADS
-            ) -> dict:
+def strainline(
+        input_fastq,
+        output_dir,
+        platform:str = 'ont',
+        mintrimlen:int = 1000,
+        topk:int = 50,
+        minoverlap:int = 1000,
+        miniden:float = 0.99,
+        minseedlen:int = 3000,
+        maxoh:int = 30,
+        iter:int = 2,
+        maxgd:float = 0.01,
+        maxld:float = 0.001,
+        maxco:int = 5,
+        min_abun:float = 0.02,
+        rm_mis_asm: bool = False,
+        err_cor:bool = True,
+        threads:int = THREADS
+    ) -> dict:
     strainline_exe = '/opt/Strainline/src/strainline.sh'
     cmd = [
         strainline_exe,
@@ -74,7 +75,7 @@ def strainline(input_fastq,
     }
 
 def rvhaplo(input_reads, reference, prefix, output):
-    rvhaplo_script = settings["softwares"]["rvhaplo"])
+    rvhaplo_script = settings["softwares"]["rvhaplo"]
     os.chdir(settings["softwares"]["rvhaplo"])
     temp1, temp_name1 = tempfile.mkstemp(suffix='.sam')
     reads_alignment(input_reads, reference, temp_name1, fmt='sam')
