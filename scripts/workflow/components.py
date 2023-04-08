@@ -1,9 +1,12 @@
 
 import os
+import shutil
 import tempfile
 import subprocess
 from multiprocessing import cpu_count
 from ..utilities.settings import settings
+
+THREADS = cpu_count()
 
 def reads_alignment(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> dict:
     fmt = fmt.lower()
@@ -38,7 +41,7 @@ def strainline(input_fastq,
                min_abun:float = 0.02,
                rm_mis_asm: bool = False,
                err_cor:bool = True,
-               threads:int = cpu_count()
+               threads:int = THREADS
             ) -> dict:
     strainline_exe = '/opt/Strainline/src/strainline.sh'
     cmd = [
@@ -71,8 +74,8 @@ def strainline(input_fastq,
     }
 
 def rvhaplo(input_reads, reference, prefix, output):
-    rvhaplo_script = get_settings("rvhaplo", "command")
-    os.chdir(get_settings("rvhaplo", "path"))
+    rvhaplo_script = settings["softwares"]["rvhaplo"])
+    os.chdir(settings["softwares"]["rvhaplo"])
     temp1, temp_name1 = tempfile.mkstemp(suffix='.sam')
     reads_alignment(input_reads, reference, temp_name1, fmt='sam')
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -105,14 +108,14 @@ class BLAST:
             return
         return subprocess.run(['makeblastdb', '-dbtype', 'nucl', '-in', input_file, '-parse_seqids'])
 
-    def blast_sequences(self, query_fasta, database, output_dir, threads: int=cpu_count()) -> dict:
+    def blast_sequences(self, query_fasta, database, output_dir, threads: int=THREADS) -> dict:
         '''
         Performs Blast analysis on provided sequences based on user-specified database.
         '''
         if self.blast_db_exists:
             raise Exception(f'Daatabase {database} not found.')
         output_file = f'{output_dir}/haplotype.blast.csv'
-        cmd =  settings['softwares']['blast'] + '-db {database} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
+        cmd =  settings['softwares']['blast'] + f'-db {database} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
         ps1 = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         if os.path.exists(output_file):
             ps2 = subprocess.run(
@@ -134,7 +137,7 @@ def snippy(
         input_file, input_reference, input_type,
         output_dir=os.getcwd(),
         snippy_params:dict = {},
-        threads:int = cpu_count(),
+        threads:int = THREADS,
         max_ram:int = -1,
         tmp_dir:str = settings.get('tmp_dir', './tmp')
     ) -> None:
@@ -146,7 +149,7 @@ def snippy(
         - input_reference (str): Reference genome. Supports FASTA, GenBank, EMBL (not GFF)
         - output_dir (str): Output directory. (default=os.getcwd())
         - snippy_params (dict): Snippy parameter in Python dictionary, defaults will be use if not specified.
-        - threads (int): Maximum number of CPUs to use. (default=multiprocessing.cpu_count())
+        - threads (int): Maximum number of CPUs to use. (default=multiprocessing.THREADS)
         - max_ram (int): Maximum RAM in Gb. (default=-1: AUTO)
         - tmp_dir (str): Directory to store temporary files. (default='./tmp')
 
