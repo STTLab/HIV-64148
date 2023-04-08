@@ -45,9 +45,10 @@ RUN ["ln", "-fs", "/opt/spoa/build/bin/spoa", "/usr/local/bin/spoa"]
 # Install MetaBAT
 WORKDIR /opt
 RUN ["wget", "https://bitbucket.org/berkeleylab/metabat/get/master.tar.gz"]
-RUN ["tar", "-zvxf", "master.tar.gz"]
+WORKDIR /opt/berkeleylab-metabat
+WORKDIR /opt
+RUN ["tar", "-zxf", "master.tar.gz", "-C", "berkeleylab-metabat", "--strip-components", "1"]
 RUN ["rm", "master.tar.gz"]
-RUN ["mv", "/opt/berkeleylab-metabat-*", "/opt/berkeleylab-metabat"]
 RUN ["cmake", "/opt/berkeleylab-metabat"]
 RUN make
 RUN make test
