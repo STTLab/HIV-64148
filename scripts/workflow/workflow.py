@@ -33,7 +33,7 @@ class Worker(object):
         od = input('Output directory: ')
         if os.path.exists(od):
             if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y': return
-        return self.assign_job(fq, od, True)
+        return self.assign_job(self, fq, od, True)
 
     @classmethod
     def run_qc(self, input_fastq):
@@ -41,18 +41,24 @@ class Worker(object):
 
     def run_workflow(self):
         with TemporaryDirectory() as _tmpdir:
-            os.symlink(self._input_fastq, f'{_tmpdir.name}/raw_reads.fastq')
+            os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
             haplotype = components.strainline(
                 input_fastq=f'{_tmpdir.name}/raw_reads.fastq',
-                output_dir=_tmpdir.name
+                output_dir=_tmpdir
             )
-            if haplotype['return_code' == 0]:
-                shutil.move(haplotype['output']['haplotype'], self.ou)
+            while haplotype.poll() == None:
+                stdout, stderr = haplotype.communicate()
+                print(stdout.decode())
+
+            # if haplotype['return_code' == 0]:
+            shutil.move(f'{_tmpdir}/haplotype.final.fa', self.output_dir)
+            print('Finished')
 
 def main():
-    worker = Worker(workplace=os.getcwd())
+    worker = Worker()
     job = worker.assign_job_cli()
     print(f'Job created (id:{job})')
+    worker.run_workflow()
 
 if __name__ == '__main__':
     main()

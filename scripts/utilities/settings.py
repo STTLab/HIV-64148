@@ -2,10 +2,10 @@
 import os
 import json
 
-SETTINGS = f'{os.getcwd()}\\settings\\settings.json'
-
-if not os.path.exists(SETTINGS):
-    SETTINGS = f'/workflow/settings/settings.json'
+allow_settings = [f'{os.getcwd()}\\settings\\settings.json', f'/workflow/settings/settings.json', f'{os.getcwd()}/settings/settings.json']
+for p in allow_settings:
+    if os.path.exists(p):
+        SETTINGS = p
 
 with open(SETTINGS, 'r') as f:
     global settings
