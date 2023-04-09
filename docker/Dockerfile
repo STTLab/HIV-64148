@@ -99,8 +99,8 @@ RUN ["pip", "install", "--upgrade", "numpy"]
 
 RUN apt-get remove -y build-essential
 
-COPY ../scripts /hiv64148/scripts
-COPY ../settings /hiv64148/settings
+COPY ./scripts /hiv64148/scripts
+COPY ./settings /hiv64148/settings
 
 WORKDIR /workspace
 CMD ["/bin/bash"]
