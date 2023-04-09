@@ -13,17 +13,14 @@ def reads_alignment(input_reads, reference, output, platform: str = 'map-ont', f
     if fmt == 'bam':
         cmd = ['~/Tools/3-assembler/minimap2-2.24_x64-linux/minimap2', '-ax', platform, reference, input_reads]
         alignment = subprocess.Popen(" ".join(cmd), shell=True, stdout=subprocess.PIPE)
-        ps = subprocess.run(" ".join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, shell=True, check=True)
+        process = subprocess.Popen(" ".join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, shell=True)
     elif fmt == 'sam':
         with open(output, 'w') as f:
             cmd = ['~/Tools/3-assembler/minimap2-2.24_x64-linux/minimap2', '-ax', platform, reference, input_reads]
-            ps = subprocess.run(" ".join(cmd), shell=True, check=True, stdout=f)
+            process = subprocess.Popen(" ".join(cmd), shell=True, stdout=f)
     else:
         raise ValueError(f'{fmt} is not a correct output format. (Only sam or bam is allowed)')
-    return {
-        'retrn_code': ps.returncode,
-        'output': output
-    }
+    return process
 
 def strainline(
         input_fastq,
@@ -65,14 +62,8 @@ def strainline(
         '--correctErr', str(err_cor),
         '--threads', str(threads)
     ]
-    ps = subprocess.run(cmd, shell=True, check=True)
-    return {
-        'return_code': ps.returncode,
-        'output': {
-            'corrected_reads': f'{output_dir}/corrected.{iter}.fa',
-            'haplotype': f'{output_dir}/haplotype.final.fa'
-        }
-    }
+    process = subprocess.Popen(' '.join(cmd), shell=True)
+    return process
 
 def rvhaplo(input_reads, reference, prefix, output):
     rvhaplo_script = settings["softwares"]["rvhaplo"]
