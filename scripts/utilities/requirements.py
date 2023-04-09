@@ -32,6 +32,7 @@ def check_requirements() -> dict:
         output, error = shell.communicate()
         if error:
             logger.warning(error.decode())
+        else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
             
         result[prog] = return_code(shell.returncode)
     return result
