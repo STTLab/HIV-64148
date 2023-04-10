@@ -69,7 +69,7 @@ RUN make install -C DALIGNER DEST_DIR=/usr/local/bin
 # Install Strainline
 WORKDIR /opt
 RUN ["git", "clone", "https://github.com/HaploKit/Strainline.git"]
-RUN ["ln", "-fs", "/opt/Strainline/src/strainline.sh", "/usr/local/bin/strainline"]
+RUN ["ln", "-fs", "/opt/Strainline/src/*", "/usr/local/bin/"]
 
 
 ENV MAMBA_ROOT_PREFIX="/micromamba/bin/"

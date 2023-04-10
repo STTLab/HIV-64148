@@ -1,6 +1,6 @@
 {
     "softwares": {
-        "strainline"            : "strainline",
+        "strainline"            : "strainline.sh",
         "snippy"                : "mamba run -n venv snippy",
         "blast"                 : "mamba run -n venv blastn",
         "canu"                  : "mamba run -n venv canu",
