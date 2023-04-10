@@ -2,7 +2,7 @@
 import os
 import json
 
-allow_settings = [f'{os.getcwd()}\\settings\\settings.json', f'/workflow/settings/settings.json', f'{os.getcwd()}/settings/settings.json']
+allow_settings = [f'{os.getcwd()}\\settings\\settings.json', f'/hiv64148/settings/settings.json', f'{os.getcwd()}/settings/settings.json']
 for p in allow_settings:
     if os.path.exists(p):
         SETTINGS = p
