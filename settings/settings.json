@@ -1,10 +1,11 @@
 {
     "softwares": {
-        "strainline"            : "strainline",
+        "strainline"            : "strainline.sh",
         "snippy"                : "micromamba run -n venv snippy",
         "blast"                 : "micromamba run -n venv blastn",
         "canu"                  : "micromamba run -n venv canu",
         "medaka"                : "micromamba run -n venv medaka_consensus"
+
     },
     "pipeline": {
         "settings": {
