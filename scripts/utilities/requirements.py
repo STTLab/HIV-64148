@@ -1,6 +1,5 @@
 
 import sys
-import logging
 import subprocess
 from .settings import settings
 from .logger import logger
