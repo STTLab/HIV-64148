@@ -62,7 +62,7 @@ def strainline(
         '--correctErr', str(err_cor),
         '--threads', str(threads)
     ]
-    process = subprocess.Popen(' '.join(cmd), shell=True)
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return process
 
 def rvhaplo(input_reads, reference, prefix, output):
