@@ -1,5 +1,6 @@
 
 import sys
+from utilities import apis
 from workflow import workflow
 
 PYTHON_VERSION = sys.version_info
@@ -10,7 +11,8 @@ CONTACT = "sara_watt@cmu.ac.th"
 
 
 def main():
-    workflow.main()
+    # workflow.main()
+    apis._test()
     
 if __name__ == '__main__':
     main()
