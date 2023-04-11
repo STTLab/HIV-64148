@@ -1,6 +1,8 @@
 
-import os
+import os, sys
+import glob
 import shutil
+import time
 from uuid import uuid4, UUID
 from tempfile import TemporaryDirectory
 from . import components
@@ -46,12 +48,19 @@ class Worker(object):
                 input_fastq=f'{_tmpdir.name}/raw_reads.fastq',
                 output_dir=_tmpdir
             )
+            print(f'PID: {haplotype.pid}')
+            t = time.time()
             while haplotype.poll() == None:
-                stdout, stderr = haplotype.communicate()
-                print(stdout.decode())
+                elapsed = f'{int(time.time() - t)} sec.'
+                sys.stdout.write('\b'*len(str(elapsed)))
+                if '0' in elapsed:
+                    sys.stdout.write('\b'*len(str(elapsed)))
+                sys.stdout.write(str(elapsed))
+                sys.stdout.flush()
+                time.sleep(1)
 
-            # if haplotype['return_code' == 0]:
-            shutil.move(f'{_tmpdir}/haplotype.final.fa', self.output_dir)
+            for file in glob.glob('{_tmpdir}/*'):
+                shutil.move(file, self.output_dir)
             print('Finished')
 
 def main():
