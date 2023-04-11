@@ -9,6 +9,7 @@ from io import StringIO
 from utilities.apis import EutilsNCBI
 from multiprocessing import cpu_count
 from utilities.settings import settings
+from utilities.logger import logger
 
 THREADS = cpu_count()
 
@@ -117,8 +118,13 @@ class BLAST:
             '-parse_seqids',
             '-blastdb_version', '5',
         ]
-        process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        logger.debug(f'Creating database {dbtitle}')
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
+        if stdout:
+            logger.debug(stdout.decode())
+        if stderr:
+            logger.warn(stderr.decode())
         return process.returncode
     
     @classmethod
@@ -141,6 +147,7 @@ class BLAST:
         with tempfile.TemporaryDirectory() as _temp:
             seqs = []
             for accession in accession_list:
+                logger.debug(f'Retrieving sequence {accession}')
                 seqs.append(EutilsNCBI.fetch_fasta(accession))
             SeqIO.write(seqs, f'{_temp}/{dbtitle}', 'fasta')
             shutil.move(f'{_temp}/{dbtitle}', f'{cls.db_path}/{dbtitle}')
@@ -155,23 +162,21 @@ class BLAST:
             raise Exception(f'Database {dbtitle} not found in {self.db_path}.')
         output_file = f'{output_dir}/haplotype.blast.csv'
         cmd =  settings['softwares']['blast'] + f'-db {dbtitle} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
-        ps1 = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        ps1.wait()
-        if os.path.exists(output_file):
-            ps2 = subprocess.run(
-                ['sed', '-i',
-                "'1 i\qseqid,sseqid,pident,length,mismatch,gapopen,\
-                    qstart,qend,sstart,send,evalue,bitscore'", output_file
-                ],shell=True, check=True
-            )
-            return {
-                'return_code': [ps1.returncode, ps2.returncode],
-                'output': {
-                    'output_dir': output_dir,
-                    'blast_result': output_file
-                }
+        cmd =  settings['softwares']['blast']['blastn'] + f' -db {self.db_path}/{dbtitle} -query {query_fasta} -out {output_file} -outfmt 6 -num_threads {str(threads)}'
+        ps1 = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = ps1.communicate()
+        if stdout:
+            logger.debug(stdout.decode())
+        if stderr:
+            logger.warn(stderr.decode())
+            raise Exception('Blast error.')
+        return {
+            'return_code': ps1.returncode,
+            'output': {
+                'output_dir': output_dir,
+                'blast_result': output_file
             }
-        raise Exception('Blast error.')
+        }
 
 def snippy(
         input_file, input_reference, input_type,
