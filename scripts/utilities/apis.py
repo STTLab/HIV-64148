@@ -11,13 +11,13 @@ class EutilsNCBI():
         pass
 
     @classmethod
-    def fetch_fasta(self, accession, save_to=None):
+    def fetch_fasta(cls, accession, save_to=None):
         url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
         params = {
-        'db': 'nucleotide',
-        'id': accession,
-        'retmode': 'fasta',
-        'rettype': 'fasta'
+            'db': 'nucleotide',
+            'id': accession,
+            'retmode': 'fasta',
+            'rettype': 'fasta'
         }
         res = requests.get(f'{url}/efetch.fcgi', params=params)
         try:

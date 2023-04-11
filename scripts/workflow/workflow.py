@@ -12,7 +12,7 @@ class Worker(object):
     def __init__(self, handler=None) -> None:
         self.handler = handler
 
-    def assign_job(self, input_fastq, output_dir, overwrite=False) -> UUID:
+    def assign_job(self, input_fastq, output_dir, overwrite=False) -> UUID | None:
         '''
         Assign a job to a worker with provided parameters.
         '''
@@ -26,7 +26,6 @@ class Worker(object):
         self.output_dir = output_dir
         return self.job_id
 
-    @classmethod
     def assign_job_cli(self):
         '''
         Command line interface for creating a job.
@@ -35,17 +34,17 @@ class Worker(object):
         od = input('Output directory: ')
         if os.path.exists(od):
             if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y': return
-        return self.assign_job(self, fq, od, True)
+        return self.assign_job(fq, od, True)
 
     @classmethod
-    def run_qc(self, input_fastq):
+    def run_qc(cls, input_fastq):
         pass
 
     def run_workflow(self):
         with TemporaryDirectory() as _tmpdir:
             os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
             haplotype = components.strainline(
-                input_fastq=f'{_tmpdir.name}/raw_reads.fastq',
+                input_fastq=f'{_tmpdir}/raw_reads.fastq',
                 output_dir=_tmpdir
             )
             print(f'PID: {haplotype.pid}')
