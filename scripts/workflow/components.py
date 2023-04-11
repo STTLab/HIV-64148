@@ -1,8 +1,12 @@
 
 import os
+import glob
 import shutil
 import tempfile
 import subprocess
+from Bio import SeqIO
+from io import StringIO
+from utilities.apis import EutilsNCBI
 from multiprocessing import cpu_count
 from utilities.settings import settings
 
@@ -41,7 +45,7 @@ def strainline(
         err_cor:bool = True,
         threads:int = THREADS
     ) -> dict:
-    strainline_exe = '/opt/Strainline/src/strainline.sh'
+    strainline_exe = settings['softwares']['strainline']
     cmd = [
         strainline_exe,
         '-i', input_fastq,
@@ -85,30 +89,47 @@ def rvhaplo(input_reads, reference, prefix, output):
 
 
 class BLAST:
+    def __init__(self, db_path=settings['pipeline']['settings']['blast']['db_dir']) -> None:
+        if not os.path.exists(db_path): os.makedirs(db_path)
+        self.db_path = db_path
 
-    def __init__(self) -> None:
-        pass
-
-    def blast_db_exists(self) -> bool:
-        pass
-
-    def create_blast_db(self, input_file):
+    @classmethod
+    def create_db(self, dbtitle, input_file, dbtype):
         '''
-        Create Blast database if not existed.
+        Create Blast database.
         '''
-        if self.blast_db_exists():
-            return
-        return subprocess.run(['makeblastdb', '-dbtype', 'nucl', '-in', input_file, '-parse_seqids'])
+        cmd = [
+            settings['softwares']['blast']['makedb'],
+            '-title', dbtitle,
+            '-dbtype', dbtype,
+            '-in', input_file,
+            '-parse_seqids',
+            '-blastdb_version', '5',
+        ]
+        process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        return process.returncode
+    
+    @classmethod
+    def accession_to_db(self, dbtitle, accession_list, dbtype):
+        with tempfile.TemporaryDirectory() as _temp:
+            seqs = []
+            for accession in accession_list:
+                seqs.append(EutilsNCBI.fetch_fasta(accession))
+            SeqIO.write(seqs, f'{_temp}/{dbtitle}', 'fasta')
+            shutil.move(f'{_temp}/{dbtitle}', f'{self.db_path}/{dbtitle}')
+        self.create_db(dbtitle, f'{self.db_path}/{dbtitle}', dbtype)
 
-    def blast_sequences(self, query_fasta, database, output_dir, threads: int=THREADS) -> dict:
+    def blast_sequences(self, query_fasta, dbtitle, output_dir, threads: int=THREADS) -> dict:
         '''
         Performs Blast analysis on provided sequences based on user-specified database.
         '''
-        if self.blast_db_exists:
-            raise Exception(f'Daatabase {database} not found.')
+        if not os.path.exists(self.db_path):
+            raise Exception(f'Database {dbtitle} not found in {self.db_path}.')
         output_file = f'{output_dir}/haplotype.blast.csv'
-        cmd =  settings['softwares']['blast'] + f'-db {database} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
+        cmd =  settings['softwares']['blast'] + f'-db {dbtitle} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
         ps1 = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        ps1.wait()
         if os.path.exists(output_file):
             ps2 = subprocess.run(
                 ['sed', '-i',
