@@ -25,15 +25,15 @@ def check_requirements() -> dict:
     softwares = settings.get('softwares', {})
     for prog in softwares.keys():
         if isinstance(prog, dict):
-            for command in prog.keys():
-                cmd = softwares[prog] + ' -h'
+            for command in softwares[prog].keys():
+                cmd = softwares[prog][command] + ' -h'
                 shell = subprocess.Popen(
                     cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=True
                 )
                 output, error = shell.communicate()
                 if error:
                     logger.warning(error.decode())
-                else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
+                else: logger.debug(f'{prog} {command} - {return_code(shell.returncode)}')
             continue
         else:
             cmd = softwares[prog] + ' -h'

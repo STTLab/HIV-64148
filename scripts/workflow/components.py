@@ -112,6 +112,8 @@ class BLAST:
     
     @classmethod
     def accession_to_db(self, dbtitle, accession_list, dbtype):
+        try: self.db_path 
+        except AttributeError: self.__init__()
         with tempfile.TemporaryDirectory() as _temp:
             seqs = []
             for accession in accession_list:

@@ -35,7 +35,7 @@ def generate_report_skeleton(run_id, haplotypes: tuple):
                 with tag('div'):
                     doc.asis(generate_table(nhap))
                     for i, seq in enumerate(haplotypes):
-                        doc.asis(generate_collapse(f'Haplotype {i+1}', f'ID: {seq.id}<br>{seq.description}<br><br>{str(seq.seq)}'))
+                        doc.asis(generate_collapse(f'Haplotype {i+1}', f'ID: {seq.id}<br>{seq.description}<br><br><span id="{seq.id}_seq" style="d">{seq.id} {seq.description}<br>{str(seq.seq)}</span>'))
             doc.asis(generate_footer())
     print(indent(doc.getvalue()))
     with open('scripts\\sketch\\report.html', 'w') as html:
