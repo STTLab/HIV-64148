@@ -1,11 +1,12 @@
 
-from random import randint
+from Bio import SeqIO
 from uuid import uuid4
-from yattag import Doc, indent
+from yattag.doc import Doc
+from yattag.indentation import indent
 
-def generate_report_skeleton(run_id):
+def generate_report_skeleton(run_id, haplotypes: tuple):
+    nhap = len(haplotypes)
     doc, tag, text = Doc().tagtext()
-
     doc.asis('<!DOCTYPE html>')
     with tag('html'):
         with tag('head'):
@@ -32,10 +33,9 @@ def generate_report_skeleton(run_id):
                 with tag('h4'):
                     text(f'run id: {run_id}')
                 with tag('div'):
-                    nhap = randint(1,10)
                     doc.asis(generate_table(nhap))
-                    for i in range(1, nhap+1):
-                        doc.asis(generate_collapse(f'Haplotype {i}', 'information not avialble'))
+                    for i, seq in enumerate(haplotypes):
+                        doc.asis(generate_collapse(f'Haplotype {i+1}', f'ID: {seq.id}<br>{seq.description}<br><br>{str(seq.seq)}'))
             doc.asis(generate_footer())
     print(indent(doc.getvalue()))
     with open('scripts\\sketch\\report.html', 'w') as html:
@@ -52,7 +52,7 @@ def generate_table(nhaplotypes):
                     text(nhaplotypes)
     return doc.getvalue()
 
-def generate_collapse(title, desc, ):
+def generate_collapse(title, desc):
     doc, tag, text = Doc().tagtext()
     collapse_id = str(uuid4())
     btn_attrs = {
@@ -68,7 +68,7 @@ def generate_collapse(title, desc, ):
             text(title)
         with tag('div', klass='collapse', id=collapse_id):
             with tag('div', klass='card card-body border-light'):
-                text(desc)
+                doc.asis(desc)
     return doc.getvalue()
 
 def generate_footer():
@@ -79,6 +79,10 @@ def generate_footer():
                 text('(c) 2023 MEDCMU, HIV-64148 pipeline')
     return doc.getvalue()
 
+def read_haplotype_fa(haplotype_fa):
+    haplotypes = SeqIO.parse(haplotype_fa, 'fasta')
+    return tuple(haplotypes)
+
 if __name__ == '__main__':
-    generate_report_skeleton(uuid4())
+    generate_report_skeleton(uuid4(), read_haplotype_fa('scripts\\tests\\mock\\HIV1_Strainline_result.fa'))
     # generate_collapse()
