@@ -10,6 +10,9 @@
         "medaka"                : "micromamba run -n venv medaka_consensus"
 
     },
+    "general": {
+        "logger": { "level": "DEBUG" }
+    },
     "pipeline": {
         "settings": {
             "strainline": {
