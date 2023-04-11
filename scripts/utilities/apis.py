@@ -10,6 +10,7 @@ class EutilsNCBI():
     def __init__(self) -> None:
         pass
 
+    @classmethod
     def fetch_fasta(self, accession, save_to=None):
         url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
         params = {
@@ -40,9 +41,8 @@ def hivdb_seq_analysis(haplotypes):
         
 
 def _test():
-    # ncbi = EutilsNCBI()
-    # print(ncbi.fetch_fasta('AF164485.1'))
-    print(hivdb_seq_analysis(read_haplotype_fa('scripts\\tests\\mock\\HIV1_Strainline_result.fa')))
+    print(EutilsNCBI.fetch_fasta('AF164485.1'))
+    # print(hivdb_seq_analysis(read_haplotype_fa('scripts\\tests\\mock\\HIV1_Strainline_result.fa')))
 
 if __name__ == '__main__':
     _test()
