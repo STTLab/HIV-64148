@@ -12,7 +12,7 @@ from utilities.settings import settings
 
 THREADS = cpu_count()
 
-def reads_alignment(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> dict:
+def reads_alignment(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> subprocess.Popen:
     fmt = fmt.lower()
     if fmt == 'bam':
         cmd = ['~/Tools/3-assembler/minimap2-2.24_x64-linux/minimap2', '-ax', platform, reference, input_reads]
@@ -44,7 +44,7 @@ def strainline(
         rm_mis_asm: bool = False,
         err_cor:bool = True,
         threads:int = THREADS
-    ) -> dict:
+    ) -> subprocess.Popen:
     strainline_exe = settings['softwares']['strainline']
     cmd = [
         strainline_exe,
@@ -89,15 +89,26 @@ def rvhaplo(input_reads, reference, prefix, output):
 
 
 class BLAST:
+    db_path = settings['pipeline']['settings']['blast']['db_dir']
     def __init__(self, db_path=settings['pipeline']['settings']['blast']['db_dir']) -> None:
         if not os.path.exists(db_path): os.makedirs(db_path)
         self.db_path = db_path
 
     @classmethod
-    def create_db(self, dbtitle, input_file, dbtype):
+    def create_db(cls, dbtitle, input_file, dbtype) -> int:
         '''
-        Create Blast database.
+        Create Blast database in the same path with the input_file.
+
+        Parameters:
+            - dbtitle (str): Database title
+            - input_file (str): Path to FASTA file to be use as reference for databse building
+            - dbtype (str): Database type either "nulc" for nucleotide or "prot" for protein
+
+        Returns:
+            (int): Return code of a `makeblsetdb` subprocess
         '''
+        if dbtype not in ('nucl', 'prot'):
+            raise ValueError('Only "nucl" or "prot" is allowed. Plese refers to BLAST documentation.')
         cmd = [
             settings['softwares']['blast']['makedb'],
             '-title', dbtitle,
@@ -111,18 +122,32 @@ class BLAST:
         return process.returncode
     
     @classmethod
-    def accession_to_db(self, dbtitle, accession_list, dbtype):
-        try: self.db_path 
-        except AttributeError: self.__init__()
+    def accession_to_db(cls, dbtitle: str, accession_list: list[str] | tuple[str], dbtype: str) -> None:
+        '''
+        Create Blast database from a list of accession number(s).
+        Fasta sequences will be fetched from NCBI database (requires internet connection).
+
+        Parameters:
+            - dbtitle (str): Database title
+            - accession_list (list | tuple): List or Tuple of accession number in string
+            - dbtype (str): Database type either "nulc" for nucleotide or "prot" for protein
+
+        Returns:
+            None
+        '''
+        if dbtype not in ('nucl', 'prot'):
+            raise ValueError('Only "nucl" or "prot" is allowed. Plese refers to BLAST documentation.')
+
         with tempfile.TemporaryDirectory() as _temp:
             seqs = []
             for accession in accession_list:
                 seqs.append(EutilsNCBI.fetch_fasta(accession))
             SeqIO.write(seqs, f'{_temp}/{dbtitle}', 'fasta')
-            shutil.move(f'{_temp}/{dbtitle}', f'{self.db_path}/{dbtitle}')
-        self.create_db(dbtitle, f'{self.db_path}/{dbtitle}', dbtype)
+            shutil.move(f'{_temp}/{dbtitle}', f'{cls.db_path}/{dbtitle}')
+        cls.create_db(dbtitle, f'{cls.db_path}/{dbtitle}', dbtype)
+        return
 
-    def blast_sequences(self, query_fasta, dbtitle, output_dir, threads: int=THREADS) -> dict:
+    def blast_nucleotide(self, query_fasta, dbtitle, output_dir, threads: int=THREADS) -> dict:
         '''
         Performs Blast analysis on provided sequences based on user-specified database.
         '''
@@ -155,7 +180,7 @@ def snippy(
         threads:int = THREADS,
         max_ram:int = -1,
         tmp_dir:str = settings.get('tmp_dir', './tmp')
-    ) -> None:
+    ) -> dict:
     '''
     Finds SNPs between a haploid reference genome and your NGS sequence reads using Snippy.
 
