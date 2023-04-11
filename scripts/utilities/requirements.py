@@ -24,16 +24,27 @@ def check_requirements() -> dict:
     result = {}
     softwares = settings.get('softwares', {})
     for prog in softwares.keys():
-        cmd = softwares[prog] + ' -h'
-        shell = subprocess.Popen(
-            cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=True
-        )
-        output, error = shell.communicate()
-        if error:
-            logger.warning(error.decode())
-        else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
-            
-        result[prog] = return_code(shell.returncode)
+        if isinstance(prog, dict):
+            for command in prog.keys():
+                cmd = softwares[prog] + ' -h'
+                shell = subprocess.Popen(
+                    cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=True
+                )
+                output, error = shell.communicate()
+                if error:
+                    logger.warning(error.decode())
+                else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
+            continue
+        else:
+            cmd = softwares[prog] + ' -h'
+            shell = subprocess.Popen(
+                cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=True
+            )
+            output, error = shell.communicate()
+            if error:
+                logger.warning(error.decode())
+            else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
+            result[prog] = return_code(shell.returncode)
     return result
 
 def _test():
