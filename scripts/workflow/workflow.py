@@ -60,7 +60,12 @@ class Worker(object):
 
             for file in glob.glob('{_tmpdir}/*'):
                 shutil.move(file, self.output_dir)
-            print('Finished')
+            print('Finished - Strainline')
+
+        # BLAST
+        blast = components.BLAST()
+        blast.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', '32hiv1_default_db', self.output_dir)
+        print('Finished - BLASTN')
 
 def main():
     worker = Worker()
