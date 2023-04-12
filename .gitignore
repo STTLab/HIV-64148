@@ -151,5 +151,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+.vscode
+
 scripts/tests/mock/HIV1_Strainline_reads.fa
 scripts/tests/mock/HIV1_Strainline_result.fa
