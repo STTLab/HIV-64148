@@ -5,6 +5,7 @@ import requests
 from Bio import SeqIO
 from io import StringIO
 from workflow.gen_report import read_haplotype_fa
+from utilities.logger import logger
 
 class EutilsNCBI():
     def __init__(self) -> None:
@@ -19,6 +20,7 @@ class EutilsNCBI():
             'retmode': 'fasta',
             'rettype': 'fasta'
         }
+        logger.debug(f'Fetching sequence {accession}')
         res = requests.get(f'{url}/efetch.fcgi', params=params)
         try:
             seq = SeqIO.read(StringIO(res.content.decode()), 'fasta')
@@ -41,7 +43,7 @@ def hivdb_seq_analysis(haplotypes):
         
 
 def _test():
-    print(EutilsNCBI.fetch_fasta('AF164485.1'))
+    print(EutilsNCBI.fetch_fasta('KC492737'))
     # print(hivdb_seq_analysis(read_haplotype_fa('scripts\\tests\\mock\\HIV1_Strainline_result.fa')))
 
 if __name__ == '__main__':
