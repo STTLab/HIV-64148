@@ -6,6 +6,7 @@ import time
 from uuid import uuid4, UUID
 from tempfile import TemporaryDirectory
 from . import components
+from utilities.logger import logger 
 
 class Worker(object):
 
@@ -47,7 +48,7 @@ class Worker(object):
                 input_fastq=f'{_tmpdir}/raw_reads.fastq',
                 output_dir=_tmpdir
             )
-            print(f'PID: {haplotype.pid}')
+            logger.info(f'PID: {haplotype.pid}')
             t = time.time()
             while haplotype.poll() == None:
                 elapsed = f'{int(time.time() - t)} sec.'
@@ -60,17 +61,17 @@ class Worker(object):
 
             for file in glob.glob('{_tmpdir}/*'):
                 shutil.move(file, self.output_dir)
-            print('Finished - Strainline')
+            logger.info('Finished - Strainline')
 
         # BLAST
         blast = components.BLAST()
         blast.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', '32hiv1_default_db', self.output_dir)
-        print('Finished - BLASTN')
+        logger.info('Finished - BLASTN')
 
 def main():
     worker = Worker()
     job = worker.assign_job_cli()
-    print(f'Job created (id:{job})')
+    logger.info(f'Job created (id:{job})')
     worker.run_workflow()
 
 if __name__ == '__main__':
