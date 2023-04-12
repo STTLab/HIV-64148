@@ -145,10 +145,7 @@ class BLAST:
             raise ValueError('Only "nucl" or "prot" is allowed. Plese refers to BLAST documentation.')
 
         with tempfile.TemporaryDirectory() as _temp:
-            seqs = []
-            for accession in accession_list:
-                logger.debug(f'Retrieving sequence {accession}')
-                seqs.append(EutilsNCBI.fetch_fasta(accession))
+            seqs = [EutilsNCBI.fetch_fasta(accession) for accession in accession_list]
             SeqIO.write(seqs, f'{_temp}/{dbtitle}', 'fasta')
             shutil.move(f'{_temp}/{dbtitle}', f'{cls.db_path}/{dbtitle}')
         cls.create_db(dbtitle, f'{cls.db_path}/{dbtitle}', dbtype)
