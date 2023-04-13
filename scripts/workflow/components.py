@@ -13,15 +13,15 @@ from utilities.logger import logger
 
 THREADS = cpu_count()
 
-def reads_alignment(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> subprocess.Popen:
+def minimaap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> subprocess.Popen:
     fmt = fmt.lower()
     if fmt == 'bam':
-        cmd = ['~/Tools/3-assembler/minimap2-2.24_x64-linux/minimap2', '-ax', platform, reference, input_reads]
+        cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
         alignment = subprocess.Popen(" ".join(cmd), shell=True, stdout=subprocess.PIPE)
         process = subprocess.Popen(" ".join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, shell=True)
     elif fmt == 'sam':
         with open(output, 'w') as f:
-            cmd = ['~/Tools/3-assembler/minimap2-2.24_x64-linux/minimap2', '-ax', platform, reference, input_reads]
+            cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
             process = subprocess.Popen(" ".join(cmd), shell=True, stdout=f)
     else:
         raise ValueError(f'{fmt} is not a correct output format. (Only sam or bam is allowed)')
@@ -132,15 +132,16 @@ class BLAST:
         cls.create_db(dbtitle, f'{cls.db_path}/{dbtitle}', dbtype)
         return
 
-    def blast_nucleotide(self, query_fasta, dbtitle, output_dir, threads: int=THREADS) -> dict:
+    @classmethod
+    def blast_nucleotide(cls, query_fasta, dbtitle, output_dir, threads: int=THREADS) -> dict:
         '''
         Performs Blast analysis on provided sequences based on user-specified database.
         '''
-        if not os.path.exists(self.db_path):
-            raise Exception(f'Database {dbtitle} not found in {self.db_path}.')
+        if not os.path.exists(cls.db_path):
+            raise Exception(f'Database {dbtitle} not found in {cls.db_path}.')
         output_file = f'{output_dir}/haplotype.blast.csv'
         cmd =  settings['softwares']['blast'] + f'-db {dbtitle} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
-        cmd =  settings['softwares']['blast']['blastn'] + f' -db {self.db_path}/{dbtitle} -query {query_fasta} -out {output_file} -outfmt 6 -num_threads {str(threads)}'
+        cmd =  settings['softwares']['blast']['blastn'] + f' -db {cls.db_path}/{dbtitle} -query {query_fasta} -out {output_file} -outfmt 6 -num_threads {str(threads)}'
         ps1 = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = ps1.communicate()
         if stdout:
