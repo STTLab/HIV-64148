@@ -70,25 +70,6 @@ def strainline(
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return process
 
-def rvhaplo(input_reads, reference, prefix, output):
-    rvhaplo_script = settings["softwares"]["rvhaplo"]
-    os.chdir(settings["softwares"]["rvhaplo"])
-    temp1, temp_name1 = tempfile.mkstemp(suffix='.sam')
-    reads_alignment(input_reads, reference, temp_name1, fmt='sam')
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        cmd = f'{rvhaplo_script} -i {temp_name1} -r {reference} -o {tmp_dir} -p {prefix} -t {THREADS}'
-        print(cmd)
-        ps = subprocess.run(cmd, shell=True)
-        shutil.move(f'{tmp_dir}/{prefix}_haplotypes.fasta', output)
-    os.close(temp1)
-    return {
-        'return_code': ps.returncode,
-        'output': {
-            'haplotype': f'{output}'
-        }
-    }
-
-
 class BLAST:
     db_path = settings['pipeline']['settings']['blast']['db_dir']
     def __init__(self, db_path=settings['pipeline']['settings']['blast']['db_dir']) -> None:
