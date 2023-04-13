@@ -5,7 +5,7 @@ import shutil
 import time
 from uuid import uuid4, UUID
 from tempfile import TemporaryDirectory
-from . import components
+from .components import BLAST, strainline
 from utilities.logger import logger 
 
 class Worker(object):
@@ -44,7 +44,7 @@ class Worker(object):
     def run_workflow(self):
         with TemporaryDirectory() as _tmpdir:
             os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
-            haplotype = components.strainline(
+            haplotype = strainline(
                 input_fastq=f'{_tmpdir}/raw_reads.fastq',
                 output_dir=_tmpdir
             )
@@ -64,9 +64,12 @@ class Worker(object):
             logger.info('Finished - Strainline')
 
         # BLAST
-        blast = components.BLAST()
-        blast.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', '32hiv1_default_db', self.output_dir)
+        blast = BLAST.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', '32hiv1_default_db', self.output_dir)
         logger.info('Finished - BLASTN')
+
+        # Extract sequence according to BLAST result
+        blast_result = blast['output']['blast_result']
+        
 
 def main():
     worker = Worker()
