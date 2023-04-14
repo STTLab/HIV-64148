@@ -42,25 +42,15 @@ class Worker(object):
         pass
 
     def run_workflow(self):
+        if not os.path.exists(self.output_dir): os.makedirs(self.output_dir)
         with TemporaryDirectory() as _tmpdir:
             os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
-            haplotype = strainline(
+            strainline(
                 input_fastq=f'{_tmpdir}/raw_reads.fastq',
                 output_dir=_tmpdir
             )
-            logger.info(f'PID: {haplotype.pid}')
-            t = time.time()
-            while haplotype.poll() == None:
-                elapsed = f'{int(time.time() - t)} sec.'
-                sys.stdout.write('\b'*len(str(elapsed)))
-                if '0' in elapsed:
-                    sys.stdout.write('\b'*len(str(elapsed)))
-                sys.stdout.write(str(elapsed))
-                sys.stdout.flush()
-                time.sleep(1)
-
-            for file in glob.glob('{_tmpdir}/*'):
-                shutil.move(file, self.output_dir)
+            logger.debug(f'Moving Strainline output to {self.output_dir}')
+            [shutil.move(file, self.output_dir) for file in glob.glob(f'{_tmpdir}/*')]
             logger.info('Finished - Strainline')
 
         # BLAST
