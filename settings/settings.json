@@ -36,7 +36,7 @@
                 "err_cor"       : true
             },
             "blast": {
-                "db_dir": "./blast/db"
+                "db_dir": "./workflow/blast/db"
             }
         }
     }
