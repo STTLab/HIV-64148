@@ -45,7 +45,7 @@ def strainline(
         rm_mis_asm: bool = False,
         err_cor:bool = True,
         threads:int = THREADS
-    ) -> subprocess.Popen:
+    ) -> int:
     strainline_exe = settings['softwares']['strainline']
     cmd = [
         strainline_exe,
@@ -68,7 +68,7 @@ def strainline(
         '--threads', str(threads)
     ]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return process
+    return process.returncode
 
 class BLAST:
     db_path = settings['pipeline']['settings']['blast']['db_dir']
