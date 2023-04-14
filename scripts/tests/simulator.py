@@ -1,5 +1,7 @@
 
 import subprocess
+from ..utilities.logger import logger
+from ..utilities.settings import settings
 from tempfile import TemporaryDirectory
 
 class Simulator(object):
@@ -52,15 +54,44 @@ class Simulator(object):
             cmd.append('--perfect')
         subprocess.Popen(cmd)
 
-    def _check(self):
-        process = subprocess.Popen(['read_analysis.py', '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-        if stdout:
-            print(stdout.decode())
-        process = subprocess.Popen(['simulator.py', '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-        if stdout:
-            print(stdout.decode())
+    @classmethod
+    def _check(cls) -> int:
+        try: subprocess.run(['read_analysis.py', '--help'], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error('`read_analysis.py` Error when called.')
+            logger.error(e)
+            return 1
+        try: subprocess.run(['simulator.py', '--help'], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.error('`simulator.py` Error when called.')
+            logger.error(e)
+            return 1
+        return 0
+    
+    @classmethod
+    def install_nanosim(cls):
+        '''
+        Install NanoSim simulator in micromamba environment.
+        Requires micromamba to function. If NanoSim read_analysis.py and simulator.py able to run
+        and their return code are both 0; do nothing and return `None`.
+        '''
+        # If able to run; Do nothing...
+        if cls._check() == 0: return
+
+        try: subprocess.run(['micromamba', '--help'], check=True)
+        except subprocess.CalledProcessError:
+            logger.error('Micormamba not installed. Install Micromamba and try again.')
+            exit()
+        
+        subprocess.run(['micromamba', 'create', '-n', 'nanosim', '-c', 'conda-forge', 'python=3.6'])
+        logger.info('Created micromamba environment \'nanosim\' with Python 3.6')
+        subprocess.run(['micromamba', 'install', '-n', 'nanosim', 'nanosim'])
+        logger.info('Install nanosim in micromamba environment \'nanosim\'')
+
+        # Check installation
+        if cls._check() != 0:
+            logger.error('Installation error. You may want to manually install the tools and specify path to program in the settings')
+            exit()
 
 if __name__ == '__main__':
     sim = Simulator()
