@@ -4,8 +4,10 @@ import glob
 import shutil
 import tempfile
 import subprocess
+import pandas as pd
 from Bio import SeqIO
-from io import StringIO
+from numpy import arr
+
 from utilities.apis import EutilsNCBI
 from multiprocessing import cpu_count
 from utilities.settings import settings
@@ -158,6 +160,35 @@ class BLAST:
                 'blast_result': output_file
             }
         }
+    
+    class BLASTResult(object):
+        def __init__(self, data: pd.DataFrame) -> None:
+            self.data = data
+        
+        @classmethod
+        def read(cls, file: str):
+            '''
+            Read file produced by BLASTN in tabular format (tab-seperated).
+            Input must be produced with parameter `-outfmt 6` with default output fields.
+            Plese refers to BLAST documentation.
+            '''
+            delim = '\t'
+            col_names = [
+                'qseqid', 'sseqid', 'piden','length',
+                'mismatch', 'gapopen', 'qstart', 'qend',
+                'sstart', 'send', 'evalue', 'bitscore'
+            ]
+            data = pd.read_csv(file, delimiter=delim, header=None, names=col_names)
+            return BLAST.BLASTResult(data)
+        
+        def get_iden(self, qseqid: str|None=None) -> pd.DataFrame:
+            '''
+            Retrieve data from BLAST result.
+            '''
+            df = self.data
+            res = df.loc[df.reset_index().groupby(['qseqid'])['piden'].idxmax()]
+            if qseqid: return res.loc[res['qseqid'] == qseqid].reset_index(drop=True)
+            return res.reset_index(drop=True)
 
 def snippy(
         input_file, input_reference, input_type,
