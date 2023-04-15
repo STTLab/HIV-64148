@@ -25,7 +25,7 @@ def check_requirements() -> dict:
     result = {}
     softwares = settings.get('softwares', {})
     for prog in softwares.keys():
-        if isinstance(prog, dict):
+        if isinstance(softwares[prog], dict):
             for command in softwares[prog].keys():
                 cmd = softwares[prog][command] + ' -h'
                 shell = subprocess.Popen(
