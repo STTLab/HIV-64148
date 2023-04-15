@@ -37,6 +37,22 @@
             },
             "blast": {
                 "db_dir": "./workflow/blast/db"
+            },
+            "variant_calling": {
+                "representatives": {
+                    "subtype_a": "MH705157.1",
+                    "subtype_b": "K03455.1",
+                    "subtype_c": "AY772699.1",
+                    "subtype_d": "KY392769.1",
+                    "subtype_f1": "AB485658",
+                    "subtype_f2": "MH705144",
+                    "subtype_g": "MH705134.1",
+                    "CRF01_AE": "AF259954.1",
+                    "CRF02_AG": "AB049811.1",
+                    "CRF07_BC": "KC503852",
+                    "CRF12_BF": "AF385934.1",
+                    "CRF35_A1D": "EF158040.1"
+                }
             }
         }
     }
