@@ -91,8 +91,9 @@ class BLAST:
         '''
         if dbtype not in ('nucl', 'prot'):
             raise ValueError('Only "nucl" or "prot" is allowed. Plese refers to BLAST documentation.')
+        if not os.path.exists(cls.db_path): os.makedirs(cls.db_path)
         cmd = [
-            settings['softwares']['blast']['makedb'],
+            *settings['softwares']['blast']['makedb'].split(),
             '-title', dbtitle,
             '-dbtype', dbtype,
             '-in', input_file,
@@ -126,8 +127,9 @@ class BLAST:
             raise ValueError('Only "nucl" or "prot" is allowed. Plese refers to BLAST documentation.')
 
         with tempfile.TemporaryDirectory() as _temp:
-            seqs = [EutilsNCBI.fetch_fasta(accession) for accession in accession_list]
+            seqs = EutilsNCBI.fetch_fasta_parallel(accession_list)
             SeqIO.write(seqs, f'{_temp}/{dbtitle}', 'fasta')
+            if not os.path.exists(cls.db_path): os.makedirs(cls.db_path)
             shutil.move(f'{_temp}/{dbtitle}', f'{cls.db_path}/{dbtitle}')
         cls.create_db(dbtitle, f'{cls.db_path}/{dbtitle}', dbtype)
         return
