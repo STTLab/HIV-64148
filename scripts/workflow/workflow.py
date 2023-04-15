@@ -34,7 +34,7 @@ class Worker(object):
         od = input('Output directory: ')
         if os.path.exists(od):
             if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y': return
-            os.rmdir(od)
+            shutil.rmtree(od)
         return self.assign_job(fq, od, True)
 
     @classmethod
@@ -58,4 +58,6 @@ class Worker(object):
         logger.info('Finished - BLASTN')
 
         # Extract sequence according to BLAST result
-        blast_result = blast['output']['blast_result']
+        blast_result = BLAST.BLASTResult.read(blast['output']['blast_result']).get_iden()[['qseqid', 'sseqid']].to_numpy()
+        for hap, iden
+
