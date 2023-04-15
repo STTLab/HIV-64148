@@ -29,7 +29,7 @@ def check_requirements() -> dict:
             for command in softwares[prog].keys():
                 cmd = softwares[prog][command] + ' -h'
                 shell = subprocess.Popen(
-                    cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=True
+                    cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
                 )
                 output, error = shell.communicate()
                 if error:
@@ -40,7 +40,7 @@ def check_requirements() -> dict:
         else:
             cmd = softwares[prog] + ' -h'
             shell = subprocess.Popen(
-                cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, shell=True
+                cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
             )
             output, error = shell.communicate()
             if error:
