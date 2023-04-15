@@ -59,5 +59,5 @@ class Worker(object):
 
         # Extract sequence according to BLAST result
         blast_result = BLAST.BLASTResult.read(blast['output']['blast_result']).get_iden()[['qseqid', 'sseqid']].to_numpy()
-        for hap, iden
-
+        for hap, iden in blast_result:
+            pass
