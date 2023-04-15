@@ -1,13 +1,11 @@
 
-import os, sys
+import os
 import glob
 import shutil
-import argparse
 from uuid import uuid4, UUID
 from tempfile import TemporaryDirectory
 from utilities.logger import logger 
 from .components import BLAST, strainline
-from utilities.requirements import setup_workflow
 
 class Worker(object):
 
@@ -36,6 +34,7 @@ class Worker(object):
         od = input('Output directory: ')
         if os.path.exists(od):
             if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y': return
+            os.rmdir(od)
         return self.assign_job(fq, od, True)
 
     @classmethod
@@ -60,26 +59,3 @@ class Worker(object):
 
         # Extract sequence according to BLAST result
         blast_result = blast['output']['blast_result']
-        
-
-def main():
-    parser = argparse.ArgumentParser(
-                prog='HIV-64148 Pipeline',
-                description='What the program does',
-                epilog='Text at the bottom of help')
-    parser.add_argument('function')
-
-    args = parser.parse_args()
-    match args.function:
-        case 'run_cli':
-            worker = Worker()
-            job = worker.assign_job_cli()
-            logger.info(f'Job created (id:{job})')
-            worker.run_workflow()
-        case 'setup':
-            setup_workflow()
-        case _: parser.print_help()
-
-
-if __name__ == '__main__':
-    main()
