@@ -1,13 +1,12 @@
 {
     "softwares": {
         "strainline"            : "strainline.sh",
+        "minimap2"              : "minimap2",
         "snippy"                : "micromamba run -n venv snippy",
         "blast"                 : {
                                     "blastn" : "micromamba run -n venv blastn",
                                     "makedb" : "micromamba run -n venv makeblastdb"
                                   },
-        "canu"                  : "micromamba run -n venv canu",
-        "medaka"                : "micromamba run -n venv medaka_consensus",
         "nanosim"               : {
                                     "read_analysis": "micromamba run -n nanosim read_analysis.py",
                                     "simulator": "micromamba run -n nanosim simulator.py"
@@ -34,25 +33,28 @@
                 "min_abun"      : 0.02,
                 "rm_mis_asm"    : false,
                 "err_cor"       : true
-            },
-            "blast": {
-                "db_dir": "./workflow/blast/db"
-            },
-            "variant_calling": {
-                "representatives": {
-                    "subtype_a": "MH705157.1",
-                    "subtype_b": "K03455.1",
-                    "subtype_c": "AY772699.1",
-                    "subtype_d": "KY392769.1",
-                    "subtype_f1": "AB485658",
-                    "subtype_f2": "MH705144",
-                    "subtype_g": "MH705134.1",
-                    "CRF01_AE": "AF259954.1",
-                    "CRF02_AG": "AB049811.1",
-                    "CRF07_BC": "KC503852",
-                    "CRF12_BF": "AF385934.1",
-                    "CRF35_A1D": "EF158040.1"
-                }
+            }
+        }
+    },
+    "data": {
+        "blast": {
+            "db_dir": "../data/blast/db"
+        },
+        "variant_calling": {
+            "rep_fasta": "../data/representatives.fasta",
+            "rep_ids": {
+                "subtype_a": "MH705157.1",
+                "subtype_b": "K03455.1",
+                "subtype_c": "AY772699.1",
+                "subtype_d": "KY392769.1",
+                "subtype_f1": "AB485658",
+                "subtype_f2": "MH705144",
+                "subtype_g": "MH705134.1",
+                "CRF01_AE": "AF259954.1",
+                "CRF02_AG": "AB049811.1",
+                "CRF07_BC": "KC503852",
+                "CRF12_BF": "AF385934.1",
+                "CRF35_A1D": "EF158040.1"
             }
         }
     }
