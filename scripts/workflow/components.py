@@ -175,7 +175,7 @@ class BLAST:
             if qseqid: return res.loc[res['qseqid'] == qseqid].reset_index(drop=True)
             return res.reset_index(drop=True)
 
-def minimaap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> int:
+def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> int:
     fmt = fmt.lower()
     match fmt:
         case 'bam':
