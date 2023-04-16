@@ -1,5 +1,5 @@
 
-import os
+import os, re
 import glob
 import shutil
 from Bio import SeqIO
@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
-from .components import BLAST, strainline, minimaap2
+from .components import BLAST, strainline, minimap2, snippy
 
 class Worker(object):
 
@@ -60,21 +60,31 @@ class Worker(object):
         blast = BLAST.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', '32hiv1_default_db', self.output_dir)
         logger.info('Finished - BLASTN')
 
+        logger.info('Perform variant calling...')
         # Extract sequence according to BLAST result
         blast_result = BLAST.BLASTResult.read(blast['output']['blast_result']).get_iden()[['qseqid', 'sseqid']].to_numpy()
         haplotype_seqs = FASTA.read(f'{self.output_dir}/haplotypes.final.fa')
         rep_seqs = FASTA.read(settings['data']['variant_calling']['rep_fasta'])
+        rep_ids = settings['data']['variant_calling']['rep_ids']
+        subtype_regex = re.compile(r'CRF[0-9]{2}_[A-Z]{2}|subtype_[A,B,C,D,F1,F2,G]')
+        os.mkdir(f'{self.output_dir}/variants')
         for hap, iden in blast_result:
             with TemporaryDirectory() as _temp:
                 seq = haplotype_seqs.extract(hap)
                 SeqIO.write(seq, f'{_temp}/{hap}.fasta', 'fasta')
-                seq.description
-
-                match subtype:
-                    case _:
-                        pass
-                minimaap2(
+                subtype = subtype_regex.findall(seq.description)[0]
+                logger.info(f'Haplotype {hap} identified as {iden}, {subtype}')
+                rep_seqs.extract(rep_ids[subtype], save_to=f'{_temp}/{subtype}.fasta')
+                minimap2(
                     input_reads=f'{_temp}/{hap}.fasta',
-                    reference='',
-                    output=f'{_temp}/{hap}.bam'
+                    reference=f'{_temp}/{subtype}.fasta',
+                    output=f'{_temp}/{hap}_vs_{subtype}.bam'
                 )
+                snippy(
+                    input_file=f'{_temp}/{hap}_vs_{subtype}.bam',
+                    input_reference=f'{_temp}/{subtype}.fasta',
+                    input_type='bam',
+                    output_dir=f'{self.output_dir}/variants/{hap}_vs_{subtype}',
+                    tmp_dir=_temp
+                )
+        logger.info('Finished - Variant calling')
