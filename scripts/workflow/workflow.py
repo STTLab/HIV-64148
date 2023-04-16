@@ -72,18 +72,14 @@ class Worker(object):
             with TemporaryDirectory() as _temp:
                 seq = haplotype_seqs.extract(hap)
                 SeqIO.write(seq, f'{_temp}/{hap}.fasta', 'fasta')
-                subtype = subtype_regex.findall(seq.description)[0]
+                iden_seq = FASTA.read_and_extract(f"{settings['data']['blast']['db_dir']}/32hiv1_default_db", iden)
+                subtype = subtype_regex.findall(iden_seq.description)[0]
                 logger.info(f'Haplotype {hap} identified as {iden}, {subtype}')
                 rep_seqs.extract(rep_ids[subtype], save_to=f'{_temp}/{subtype}.fasta')
-                minimap2(
-                    input_reads=f'{_temp}/{hap}.fasta',
-                    reference=f'{_temp}/{subtype}.fasta',
-                    output=f'{_temp}/{hap}_vs_{subtype}.bam'
-                )
                 snippy(
-                    input_file=f'{_temp}/{hap}_vs_{subtype}.bam',
+                    input_file=f'{_temp}/{hap}.fasta',
                     input_reference=f'{_temp}/{subtype}.fasta',
-                    input_type='bam',
+                    input_type='contigs',
                     output_dir=f'{self.output_dir}/variants/{hap}_vs_{subtype}',
                     tmp_dir=_temp
                 )

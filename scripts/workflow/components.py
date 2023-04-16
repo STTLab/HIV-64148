@@ -59,7 +59,7 @@ def strainline(
 
 class BLAST:
     db_path = settings['data']['blast']['db_dir']
-    def __init__(self, db_path=settings['pipeline']['settings']['blast']['db_dir']) -> None:
+    def __init__(self, db_path=settings['data']['blast']['db_dir']) -> None:
         if not os.path.exists(db_path): os.makedirs(db_path)
         self.db_path = db_path
 
@@ -216,7 +216,7 @@ def snippy(
     if input_type not in ('bam', 'contigs'):
         raise Exception('Incorrect input type. Only "bam" or "contig" is allowed')
     cmd = [
-        settings['softwares']['snippy'],
+        *settings['softwares']['snippy'].split(),
         '--outdir', output_dir,
         '--ref', input_reference,
         '--mapqual', snippy_params.get('mapqual', '60'),
@@ -239,7 +239,7 @@ def snippy(
         cmd.extend(['--ctgs', input_file])
 
     try:
-        ps = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        ps = subprocess.run(cmd)
         output = {
             'return_code': ps.returncode,
             'output': {
