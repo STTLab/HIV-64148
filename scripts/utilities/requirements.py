@@ -1,9 +1,11 @@
 
-import sys
+import os, sys
 import subprocess
+from pathlib import Path
+from workflow.components import BLAST
 from .settings import settings
 from .logger import logger
-from ..workflow.components import BLAST
+from .apis import EutilsNCBI
 
 def return_code(code: int):
     '''
@@ -18,10 +20,7 @@ def return_code(code: int):
         case 127: return 'MISSING'
         case _: return code
 
-def check_requirements() -> dict:
-    '''
-    Check for return code 0 of the required softwares by calling their help command.
-    '''
+def check_softwares():
     result = {}
     softwares = settings.get('softwares', {})
     for prog in softwares.keys():
@@ -49,8 +48,38 @@ def check_requirements() -> dict:
             result[prog] = shell.returncode
     return result
 
+def check_init_files():
+    # Check BLAST DB
+    db_path = settings['data']['blast']['db_dir']
+    if os.path.exists(db_path): logger.info(f'Found BLAST database directory at {db_path}')
+    else: logger.warning(f'BLAST database not found at {db_path}')
+
+    # Check representative sequences
+    rep_fasta = settings['data']['variant_calling']['rep_fasta']
+    if os.path.exists(rep_fasta): logger.info(f'Found HIV-1 representative sequences at {rep_fasta}')
+    else: logger.warning(f'HIV-1 representative sequences not found at {rep_fasta}')
+
+    return (os.path.exists(db_path), os.path.exists(rep_fasta))
+
+def check_requirements(repair: bool=False):
+    '''
+    Check for return code 0 of the required softwares by calling their help command.
+    '''
+    check_softwares()
+    if not all(check_init_files()):
+        logger.warning('Not all required files are present. Attempting to create...')
+        if repair:
+            setup_workflow()
+
 def setup_workflow():
-    check_requirements()
+    rep_ids: dict = settings['data']['variant_calling']['rep_ids']
+    rep_fasta = settings['data']['variant_calling']['rep_fasta']
+    if not os.path.exists(rep_fasta): 
+        logger.info('Retrieving representative sequences for each HIV-1 subtype.')
+        os.makedirs(Path(rep_fasta).parent)
+    EutilsNCBI.fetch_fasta_parallel(list(rep_ids.values()), save_to=rep_fasta)
+
+    logger.info('Creating BLAST database of 32 selected HIV-1 sequences.')
     BLAST.accession_to_db(
         '32hiv1_default_db',
         [
@@ -64,13 +93,3 @@ def setup_workflow():
         ],
         'nucl'
     )
-
-def _test():
-    '''
-    Check module funcionality.
-    '''
-    check_requirements()
-
-
-if __name__ == '__main__':
-    _test()
