@@ -32,8 +32,8 @@ class EutilsNCBI:
             summary: dict = cls.fetch_summery(accession)
             info = dict(zip(summary.get("subtype","").split('|'), summary.get("subname","").split("|")))
             if 'subtype' in info.keys():
-                subtype = info['subtype']
-            else: subtype = 'subtype ' + hivdb_seq_analysis(
+                subtype = 'subtype_' + info['subtype']
+            else: subtype = 'subtype_' + hivdb_seq_analysis(
                                 Sequence(header=seq.id, sequence=str(seq.seq)),
                                 'inputSequence { header, SHA512 }, strain { name }, \
                                 bestMatchingSubtype { displayWithoutDistance, distance }'
