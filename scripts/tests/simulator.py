@@ -9,8 +9,7 @@ from tempfile import TemporaryDirectory
 class Simulator(object):
     pre_trained_dir = './tests/pre-trained_models'
     def __init__(self) -> None:
-        # Create temporary directory
-        self._tmpdir = TemporaryDirectory()
+        pass
 
     @classmethod
     def simulate_metagenome(cls, inputs: list, num_reads: int, model_prefix, perfect=True):

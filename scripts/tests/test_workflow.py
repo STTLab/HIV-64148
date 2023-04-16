@@ -1,5 +1,6 @@
 
-import unittest
+import pandas as pd
+from .simulator import Simulator
 
-class Test(unittest.TestCase):
+def test_single_genome():
     pass
