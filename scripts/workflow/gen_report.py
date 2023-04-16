@@ -9,6 +9,7 @@ def generate_report_skeleton(run_id, haplotypes: tuple):
     doc, tag, text = Doc().tagtext()
     doc.asis('<!DOCTYPE html>')
     with tag('html'):
+        # Head
         with tag('head'):
             doc.stag('meta', charset='utf-8')
             doc.stag('meta', name='viewport', content='width=device-width, initial-scale=1')
@@ -26,6 +27,9 @@ def generate_report_skeleton(run_id, haplotypes: tuple):
                 integrity='sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe',
                 crossorigin='anonymous'
             ): pass
+        #
+        # Body
+        #
         with tag('body'):
             with tag('div', klass='container-sm mt-5'):
                 with tag('h1'):
@@ -70,6 +74,12 @@ def generate_collapse(title, desc):
             with tag('div', klass='card card-body border-light'):
                 doc.asis(desc)
     return doc.getvalue()
+
+def generate_seq_description(data):
+    doc, tag, text = Doc().tagtext()
+    with tag('p'):
+        text()
+    
 
 def generate_footer():
     doc, tag, text = Doc().tagtext()
