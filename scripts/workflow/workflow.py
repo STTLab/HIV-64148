@@ -2,10 +2,13 @@
 import os
 import glob
 import shutil
+from Bio import SeqIO
 from uuid import uuid4, UUID
 from tempfile import TemporaryDirectory
-from utilities.logger import logger 
-from .components import BLAST, strainline
+from utilities.logger import logger
+from utilities.settings import settings
+from utilities.file_handler import FASTA
+from .components import BLAST, strainline, minimaap2
 
 class Worker(object):
 
@@ -59,5 +62,19 @@ class Worker(object):
 
         # Extract sequence according to BLAST result
         blast_result = BLAST.BLASTResult.read(blast['output']['blast_result']).get_iden()[['qseqid', 'sseqid']].to_numpy()
+        haplotype_seqs = FASTA.read(f'{self.output_dir}/haplotypes.final.fa')
+        rep_seqs = FASTA.read(settings['data']['variant_calling']['rep_fasta'])
         for hap, iden in blast_result:
-            pass
+            with TemporaryDirectory() as _temp:
+                seq = haplotype_seqs.extract(hap)
+                SeqIO.write(seq, f'{_temp}/{hap}.fasta', 'fasta')
+                seq.description
+
+                match subtype:
+                    case _:
+                        pass
+                minimaap2(
+                    input_reads=f'{_temp}/{hap}.fasta',
+                    reference='',
+                    output=f'{_temp}/{hap}.bam'
+                )

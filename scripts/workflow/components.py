@@ -6,7 +6,6 @@ import tempfile
 import subprocess
 import pandas as pd
 from Bio import SeqIO
-from numpy import arr
 
 from utilities.apis import EutilsNCBI
 from multiprocessing import cpu_count
@@ -14,20 +13,6 @@ from utilities.settings import settings
 from utilities.logger import logger
 
 THREADS = cpu_count()
-
-def minimaap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> subprocess.Popen:
-    fmt = fmt.lower()
-    if fmt == 'bam':
-        cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
-        alignment = subprocess.Popen(" ".join(cmd), shell=True, stdout=subprocess.PIPE)
-        process = subprocess.Popen(" ".join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, shell=True)
-    elif fmt == 'sam':
-        with open(output, 'w') as f:
-            cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
-            process = subprocess.Popen(" ".join(cmd), shell=True, stdout=f)
-    else:
-        raise ValueError(f'{fmt} is not a correct output format. (Only sam or bam is allowed)')
-    return process
 
 def strainline(
         input_fastq,
@@ -73,7 +58,7 @@ def strainline(
     return process.returncode
 
 class BLAST:
-    db_path = settings['pipeline']['settings']['blast']['db_dir']
+    db_path = settings['data']['blast']['db_dir']
     def __init__(self, db_path=settings['pipeline']['settings']['blast']['db_dir']) -> None:
         if not os.path.exists(db_path): os.makedirs(db_path)
         self.db_path = db_path
@@ -189,6 +174,21 @@ class BLAST:
             res = df.loc[df.reset_index().groupby(['qseqid'])['piden'].idxmax()]
             if qseqid: return res.loc[res['qseqid'] == qseqid].reset_index(drop=True)
             return res.reset_index(drop=True)
+
+def minimaap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> int:
+    fmt = fmt.lower()
+    match fmt:
+        case 'bam':
+            cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
+            alignment = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(" ".join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+        case 'sam':
+            with open(output, 'w') as f:
+                cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
+                process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.PIPE)
+        case _: raise ValueError(f'{fmt} is not a correct output format. (Only sam or bam is allowed)')
+    return process.returncode
 
 def snippy(
         input_file, input_reference, input_type,
