@@ -171,7 +171,7 @@ class BLAST:
             Retrieve data from BLAST result.
             '''
             df = self.data
-            res = df.loc[df.reset_index().groupby(['qseqid'])['piden'].idxmax()]
+            res = df.loc[df.reset_index().groupby(['qseqid'])['bitscore'].idxmax()]
             if qseqid: return res.loc[res['qseqid'] == qseqid].reset_index(drop=True)
             return res.reset_index(drop=True)
 
