@@ -5,7 +5,6 @@ from io import StringIO
 import multiprocessing
 from sierrapy import SierraClient
 from sierrapy.sierraclient import Sequence
-from workflow.gen_report import read_haplotype_fa
 from utilities.logger import logger
 from utilities.settings import secrets
 
