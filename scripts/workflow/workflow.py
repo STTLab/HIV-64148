@@ -86,7 +86,7 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['strainline'] = _peak/(1024^2) # Memory Mib
+        self._stat['peak_mem']['strainline'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
 
         # BLAST
@@ -95,7 +95,7 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['blast'] = _peak/(1024^2) # Memory Mib
+        self._stat['peak_mem']['blast'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
 
         logger.info('Perform variant calling...')
@@ -123,8 +123,8 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['snippy'] = _peak/(1024^2) # Memory Mib
+        self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.stop()
         
         logger.info('Generating report')
-        generate_report_skeleton(self.job_id, f'{self.output_dir}/haplotypes.final.fa', f'{self.output_dir}/hiv-64148_report.html', f'{self.output_dir}/qc/{Path(self._input_fastq).stem}_NanoPlot-report.html', self)
+        generate_report_skeleton(self.job_id, f'{self.output_dir}/haplotypes.final.fa', f'{self.output_dir}/hiv-64148_report.html', f'{self.output_dir}/qc/{Path(self._input_fastq).stem}_NanoPlot-report.html', {'runtime': self.get_runtime(), 'blast_result': blast['output']['blast_result'], 'peak_mem': self.get_peak_mem()})

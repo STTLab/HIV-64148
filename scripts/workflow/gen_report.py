@@ -3,16 +3,15 @@ import time
 from Bio import SeqIO
 from uuid import uuid4
 from yattag.doc import Doc
-from bs4 import BeautifulSoup
 from yattag.indentation import indent
 from .components import BLAST
-from .workflow import Worker
 
-def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_html: str|None=None, worker: Worker|None=None):
+def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_html: str|None=None, worker_info: dict={}):
     def read_haplotype_fa(haplotype_fa):
         haplotypes = SeqIO.parse(haplotype_fa, 'fasta')
         return tuple(haplotypes)
     haplotypes = read_haplotype_fa(haplotype_file)
+    blast_result = BLAST.BLASTResult.read(worker_info['blast_result'])
     nhap = len(haplotypes)
     doc, tag, text = Doc().tagtext()
     doc.asis('<!DOCTYPE html>')
@@ -44,42 +43,50 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                     text('HIV-64148 Report')
                 with tag('h4'):
                     text(f'run id: {run_id}')
-                if worker:
+                if worker_info:
                     with tag('section'):
                         with tag('p'): 
                             with tag('table', klass='table table-bordered'):
                                 with tag('tr'):
                                     # Time used
                                     with tag('th', klass='table-secondary'): text('Wall clock time')
-                                    with tag('td'): text(str(worker.get_runtime()))
+                                    with tag('td'): text(worker_info['runtime'])
                                 # Peak memory usage
-                                peak_mem = worker.get_peak_mem()
                                 with tag('tr'):
-                                    with tag('th', klass='table-secondary'): text('Peak memory usage')
+                                    with tag('th', klass='table-secondary', colspan='2'): text('Peak memory usage')
                                 with tag('tr'):
                                     with tag('td'): text('Strainline')
-                                    with tag('td'): 
-                                        text(round(peak_mem['strainline'], 2))
+                                    with tag('td'):
+                                        text(worker_info['peak_mem']['strainline'])
                                         text(' Mib')
                                 with tag('tr'):
                                     with tag('td'): text('BLAST')
-                                    with tag('td'): 
-                                        text(round(peak_mem['blast'], 2))
+                                    with tag('td'):
+                                        text(worker_info['peak_mem']['blast'])
                                         text(' Mib')
                                 with tag('tr'):
                                     with tag('td'): text('Snippy')
-                                    with tag('td'): 
-                                        text(round(peak_mem['snippy']))
+                                    with tag('td'):
+                                        text(worker_info['peak_mem']['snippy'])
                                         text(' Mib')
-                            pass
                     if nanoplot_html:
-                        with tag('a', klass='btn btn-primary', href=f'../{nanoplot_html}'): text('QC Report')
+                        with tag('a', klass='btn btn-primary', href=f'../{nanoplot_html}', target='_blank'): text('QC Report')
                         
                 with tag('section'):
+                    with tag('h5'): text('Reconstructed Haplotypes')
                     with tag('div', klass='row'):
                         with tag('div', klass='col-sm'):
+                            # Haplotype composition plot
                             doc.asis('<canvas id="haplotype-chart"></canvas>')
-                        with tag('div', klass='col'): pass
+                        with tag('div', klass='col-sm'):
+                            # Subtype composition plot
+                            blast_top_iden = blast_result.get_top(1)['sseqid'].to_numpy()
+                            subtype_count = {}
+                            for iden in blast_top_iden:
+                                subtype = BLAST.get_subtypes('32hiv1_default_db', iden)
+                                if subtype in subtype_count.keys(): subtype_count[subtype] += 1
+                                else: subtype_count[subtype] = 1
+                            doc.asis('<canvas id="subtype-chart"></canvas>')
                     doc.asis(generate_haplotype_table(nhap))
                     hap_ids = []
                     hap_freq = []
@@ -87,12 +94,12 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                         hap_ids.append(seq.id)
                         hap_freq.append(seq.description.split()[2].replace('freq=',''))
                         summary_table = generate_summary_table(seq)
-                        blast_table = generate_blast_table(BLAST.BLASTResult.read('.idea\\output\\haplotype.blast.csv'), seq)
+                        blast_table = generate_blast_table(blast_result, seq)
                         drug_resistant = generate_drug_resistant_profile()
                         doc.asis(generate_collapse(f'Haplotype {i+1}', [summary_table, blast_table, drug_resistant]))
             doc.asis(generate_footer())
-            doc.asis(script_plot_haplotype('haplotype-chart', hap_ids, hap_freq))
-    print(indent(doc.getvalue()))
+            doc.asis(script_plot_doughnut('haplotype-chart', 'Haplotype Abundance', hap_ids, hap_freq))
+            doc.asis(script_plot_doughnut('subtype-chart', 'Subtype composition', subtype_count.keys(), subtype_count.values()))
     with open(output, 'w') as html:
         html.write(indent(doc.getvalue()))
 
@@ -102,7 +109,7 @@ def generate_haplotype_table(nhaplotypes):
         with tag('tbody'):
             with tag('tr'):
                 with tag('td'):
-                    text('# Haplotypes')
+                    text('Total Haplotypes: ')
                 with tag('td'):
                     text(nhaplotypes)
     return doc.getvalue()
@@ -192,28 +199,19 @@ def generate_drug_resistant_profile():
     with tag('h5'): text('Drug resistant Profile')
     return doc.getvalue()
 
-def script_plot_haplotype(element_id, labels, frequencies):
+def script_plot_doughnut(element_id, dataset_name, labels, frequencies):
     doc, tag, text = Doc().tagtext()
     doc.asis('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>')
     with tag('script'):
-        text('const ctx = document.getElementById("haplotype-chart");\n')
+        text('{ const ctx = document.getElementById("')
+        text(element_id)
+        text('");\n')
         text('new Chart(ctx, {\n\ttype: "doughnut",')
         text('\n\tdata: {\n\t\tlabels: ')
         text(str(labels) + ',')
-        text('\n\t\tdatasets: [{ label: "Haplotype Abundance", data:')
+        text('\n\t\tdatasets: [{ label: "')
+        text(dataset_name)
+        text('", data:')
         text(str(frequencies) + ',')
-        text('\n\t\tborderWidth: 1\n\t}]\n},\noptions: { plugins: { legend:{position: "right"},}}});')
-    return doc.getvalue()
-
-def nanoplot_extract_graph(nanoplot_html):
-    doc, tag, text = Doc().tagtext()
-    soup = BeautifulSoup(open(nanoplot_html, 'r').read(), features='html.parser')
-    graph_divs = list(map(str, soup.find_all('div', {'class': 'plotly-graph-div'})))
-    scripts = list( map(str, dict.fromkeys(soup.find_all('script'))) )
-    doc.asis(' '.join(graph_divs))
-    doc.asis(scripts.pop(0))
-    doc.asis(scripts.pop(0))
-    for script in scripts:
-        if 'PLOTLYENV' in script:
-            doc.asis(script)
+        text('\n\t\tborderWidth: 1\n\t}]\n},\noptions: { plugins: { legend:{position: "right"},}}});}')
     return doc.getvalue()
