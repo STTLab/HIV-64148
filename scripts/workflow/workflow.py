@@ -7,6 +7,7 @@ import tracemalloc
 from Bio import SeqIO
 from pathlib import Path
 from uuid import uuid4, UUID
+from datetime import timedelta
 from tempfile import TemporaryDirectory
 from utilities.logger import logger
 from utilities.settings import settings
@@ -27,7 +28,7 @@ class Worker(object):
         return self._stat.get('peak_mem', {})
     
     def get_runtime(self):
-        return time.time() - self._stat.get('t_start', time.time())
+        return timedelta(seconds=time.time() - self._stat.get('t_start', time.time()))
 
     def assign_job(self, input_fastq, output_dir, overwrite=False) -> UUID | None:
         '''
@@ -85,7 +86,7 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['strainline'] = _peak
+        self._stat['peak_mem']['strainline'] = _peak/(1024^2) # Memory Mib
         tracemalloc.reset_peak()
 
         # BLAST
@@ -94,7 +95,7 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['blast'] = _peak
+        self._stat['peak_mem']['blast'] = _peak/(1024^2) # Memory Mib
         tracemalloc.reset_peak()
 
         logger.info('Perform variant calling...')
@@ -122,7 +123,7 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['snippy'] = _peak
+        self._stat['peak_mem']['snippy'] = _peak/(1024^2) # Memory Mib
         tracemalloc.stop()
         
         logger.info('Generating report')
