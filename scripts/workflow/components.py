@@ -55,7 +55,7 @@ def strainline(
         min_abun:float = 0.02,
         rm_mis_asm: bool = False,
         err_cor:bool = True,
-        threads:int = THREADS
+        threads:str|int = THREADS
     ) -> int:
     strainline_exe = settings['softwares']['strainline']
     cmd = [
@@ -172,7 +172,7 @@ class BLAST:
     def get_subtypes(cls, dbtitle, accession):
         iden_seq = FASTA.read_and_extract(f'{cls.db_path}/{dbtitle}', accession)
         subtype_regex = re.compile(r'CRF[0-9]{2}_[A-Z]{2}|subtype_[A,B,C,D,F1,F2,G]')
-        subtype = subtype_regex.findall(iden_seq.description)[0]
+        subtype = subtype_regex.findall(iden_seq.description)[0]                            # pyright: reportGeneralTypeIssues=false
         return subtype
     
     class BLASTResult(object):
@@ -233,7 +233,7 @@ def snippy(
         input_file, input_reference, input_type,
         output_dir=os.getcwd(),
         snippy_params:dict = {},
-        threads:int = THREADS,
+        threads:int|str = THREADS,
         max_ram:int = -1,
         tmp_dir:str = settings.get('tmp_dir', './tmp')
     ) -> dict:
