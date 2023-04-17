@@ -1,4 +1,4 @@
-
+#!/bin/python3
 import sys
 import argparse
 from workflow.workflow import Worker
@@ -18,9 +18,16 @@ def main():
                 description='What the program does',
                 epilog='Text at the bottom of help')
     parser.add_argument('function')
-
+    parser.add_argument('-i', '--input', type=str, required=False)
+    parser.add_argument('-o', '--output_dir', type=str, required=False)
+    
     args = parser.parse_args()
     match args.function:
+        case 'run':
+            worker = Worker()
+            job = worker.assign_job(args.input, args.output_dir, True)
+            logger.info(f'Job created (id:{job})')
+            worker.run_workflow()
         case 'run_cli':
             worker = Worker()
             job = worker.assign_job_cli()
