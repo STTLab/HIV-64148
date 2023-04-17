@@ -1,10 +1,18 @@
 
+import time
 from Bio import SeqIO
 from uuid import uuid4
 from yattag.doc import Doc
+from bs4 import BeautifulSoup
 from yattag.indentation import indent
+from .components import BLAST
+from .workflow import Worker
 
-def generate_report_skeleton(run_id, haplotypes: tuple):
+def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_html: str|None=None, worker: Worker|None=None):
+    def read_haplotype_fa(haplotype_fa):
+        haplotypes = SeqIO.parse(haplotype_fa, 'fasta')
+        return tuple(haplotypes)
+    haplotypes = read_haplotype_fa(haplotype_file)
     nhap = len(haplotypes)
     doc, tag, text = Doc().tagtext()
     doc.asis('<!DOCTYPE html>')
@@ -36,16 +44,53 @@ def generate_report_skeleton(run_id, haplotypes: tuple):
                     text('HIV-64148 Report')
                 with tag('h4'):
                     text(f'run id: {run_id}')
-                with tag('div'):
-                    doc.asis(generate_table(nhap))
+                if worker:
+                    with tag('section'):
+                        with tag('p'): 
+                            with tag('table', klass='table table-bordered'):
+                                with tag('tr'):
+                                    # Time used
+                                    with tag('th', klass='table-secondary'): text('Wall clock time')
+                                    with tag('td'): text(worker.get_runtime())
+                                # Peak memory usage
+                                peak_mem = worker.get_peak_mem()
+                                with tag('tr'):
+                                    with tag('th', klass='table-secondary'): text('Peak memory usage')
+                                with tag('tr'):
+                                    with tag('td'): text('Strainline')
+                                    with tag('td'): text(peak_mem['strainline'])
+                                with tag('tr'):
+                                    with tag('td'): text('BLAST')
+                                    with tag('td'): text(peak_mem['blast'])
+                                with tag('tr'):
+                                    with tag('td'): text('Snippy')
+                                    with tag('td'): text(peak_mem['snippy'])
+                            pass
+                    if nanoplot_html:
+                        with tag('a', klass='btn btn-primary', href=f'../{nanoplot_html}'): text('QC Report')
+                        
+                with tag('section'):
+                    with tag('div', klass='row'):
+                        with tag('div', klass='col-sm'):
+                            doc.asis('<canvas id="haplotype-chart"></canvas>')
+                        with tag('div', klass='col'): pass
+                    doc.asis(generate_haplotype_table(nhap))
+                    hap_ids = []
+                    hap_freq = []
                     for i, seq in enumerate(haplotypes):
-                        doc.asis(generate_collapse(f'Haplotype {i+1}', f'ID: {seq.id}<br>{seq.description}<br><br><span id="{seq.id}_seq" style="d">{seq.id} {seq.description}<br>{str(seq.seq)}</span>'))
+                        hap_ids.append(seq.id)
+                        hap_freq.append(seq.description.split()[2].replace('freq=',''))
+                        summary_table = generate_summary_table(seq)
+                        blast_table = generate_blast_table(BLAST.BLASTResult.read('.idea\\output\\haplotype.blast.csv'), seq)
+                        drug_resistant = generate_drug_resistant_profile()
+                        doc.asis(generate_collapse(f'Haplotype {i+1}', [summary_table, blast_table, drug_resistant]))
             doc.asis(generate_footer())
+            doc.asis(script_plot_haplotype('haplotype-chart', hap_ids, hap_freq))
     print(indent(doc.getvalue()))
-    with open('scripts\\sketch\\report.html', 'w') as html:
+    with open(output, 'w') as html:
         html.write(indent(doc.getvalue()))
 
-def generate_table(nhaplotypes):
+def generate_haplotype_table(nhaplotypes):
     doc, tag, text = Doc().tagtext()
     with tag('table'):
         with tag('tbody'):
@@ -56,7 +101,7 @@ def generate_table(nhaplotypes):
                     text(nhaplotypes)
     return doc.getvalue()
 
-def generate_collapse(title, desc):
+def generate_collapse(title, subelements:list):
     doc, tag, text = Doc().tagtext()
     collapse_id = str(uuid4())
     btn_attrs = {
@@ -72,27 +117,97 @@ def generate_collapse(title, desc):
             text(title)
         with tag('div', klass='collapse', id=collapse_id):
             with tag('div', klass='card card-body border-light'):
-                doc.asis(desc)
+                for element in subelements:
+                    doc.asis(element)
     return doc.getvalue()
 
-def generate_seq_description(data):
+def generate_summary_table(seq):
+    data = {
+        'Name': seq.id,
+        'Depth': seq.description.split()[1],
+        'Abundance': seq.description.split()[2].replace('freq=',''),
+        'Length': len(seq.seq),
+    }
     doc, tag, text = Doc().tagtext()
-    with tag('p'):
-        text()
-    
+    with tag('div'):
+        with tag('h5'): text('Summary')
+        with tag('div', klass='row'):
+            with tag('div', klass='col-4'):
+                with tag('table', klass='table table-bordered'):
+                    for key, val in zip(data.keys(), data.values()):
+                        with tag('tr'):
+                            with tag('th', klass='table-secondary'): text(key)
+                            with tag('td'): text(val)
+            with tag('div', klass='col-8'):
+                with tag('div', klass='overflow-auto p-3 mb-3 mb-md-0 me-md-3 bg-light', style='max-width: 100%; max-height: 165px;'): text(f'>{seq.description}\n{str(seq.seq)}')
+    return doc.getvalue()
+
+def generate_blast_table(blast_result: BLAST.BLASTResult, seq: SeqIO.SeqRecord):
+    blast_top_iden = blast_result.get_top(5)
+    doc, tag, text = Doc().tagtext()
+    with tag('div'):
+        with tag('h5', klass='mt-4'): text('BLAST Result')
+        with tag('table', klass='table table-hover'):
+            with tag('thead'):
+                with tag('tr'):
+                    with tag('th'): text('#')
+                    with tag('th'): text('Query')
+                    with tag('th'): text('Matched')
+                    with tag('th'): text('Subtype')
+                    with tag('th'): text('% Identity')
+                    with tag('th'): text('Length')
+                    with tag('th'): text('mismatch')
+                    with tag('th'): text('bitscore')
+            with tag('tbody'):
+                for i, record in enumerate(blast_top_iden.loc[blast_top_iden['qseqid']==seq.id].to_numpy()):
+                    with tag('tr'):
+                        with tag('td'): text(i+1)
+                        with tag('td'): text(record[0])
+                        with tag('td'): 
+                            with tag('a', href=f'https://www.ncbi.nlm.nih.gov/nuccore/{record[1]}', target='_blank'): text(record[1])
+                        with tag('td'): text(BLAST.get_subtypes('32hiv1_default_db', record[1]))
+                        with tag('td'): text(record[2])
+                        with tag('td'): text(record[3])
+                        with tag('td'): text(record[4])
+                        with tag('td'): text(record[11])
+    return doc.getvalue()
 
 def generate_footer():
     doc, tag, text = Doc().tagtext()
-    with tag('footer', klass='footer mt-auto py-3 bg-light fixed-bottom'):
+    doc.asis('<div style="height: 100px;"></div>')
+    with tag('footer', klass='footer mt-5 py-3 bg-light fixed-bottom', style='display=block;'):
         with tag('div', klass='container'):
             with tag('span', klass='text-muted'):
                 text('(c) 2023 MEDCMU, HIV-64148 pipeline')
     return doc.getvalue()
 
-def read_haplotype_fa(haplotype_fa):
-    haplotypes = SeqIO.parse(haplotype_fa, 'fasta')
-    return tuple(haplotypes)
+def generate_drug_resistant_profile():
+    doc, tag, text = Doc().tagtext()
+    with tag('h5'): text('Drug resistant Profile')
+    return doc.getvalue()
 
-if __name__ == '__main__':
-    generate_report_skeleton(uuid4(), read_haplotype_fa('scripts\\tests\\mock\\HIV1_Strainline_result.fa'))
-    # generate_collapse()
+def script_plot_haplotype(element_id, labels, frequencies):
+    doc, tag, text = Doc().tagtext()
+    doc.asis('<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>')
+    with tag('script'):
+        text('const ctx = document.getElementById("haplotype-chart");\n')
+        text('new Chart(ctx, {\n\ttype: "doughnut",')
+        text('\n\tdata: {\n\t\tlabels: ')
+        text(str(labels) + ',')
+        text('\n\t\tdatasets: [{ label: "Haplotype Abundance", data:')
+        text(str(frequencies) + ',')
+        text('\n\t\tborderWidth: 1\n\t}]\n},\noptions: { plugins: { legend:{position: "right"},}}});')
+    return doc.getvalue()
+
+def nanoplot_extract_graph(nanoplot_html):
+    doc, tag, text = Doc().tagtext()
+    soup = BeautifulSoup(open(nanoplot_html, 'r').read(), features='html.parser')
+    graph_divs = list(map(str, soup.find_all('div', {'class': 'plotly-graph-div'})))
+    scripts = list( map(str, dict.fromkeys(soup.find_all('script'))) )
+    doc.asis(' '.join(graph_divs))
+    doc.asis(scripts.pop(0))
+    doc.asis(scripts.pop(0))
+    for script in scripts:
+        if 'PLOTLYENV' in script:
+            doc.asis(script)
+    return doc.getvalue()
