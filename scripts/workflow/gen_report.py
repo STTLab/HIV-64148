@@ -70,7 +70,7 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                                         text(worker_info['peak_mem']['snippy'])
                                         text(' Mib')
                     if nanoplot_html:
-                        with tag('a', klass='btn btn-primary', href=f'../{nanoplot_html}', target='_blank'): text('QC Report')
+                        with tag('a', klass='btn btn-primary', href=nanoplot_html, target='_blank'): text('QC Report')
                         
                 with tag('section'):
                     with tag('h5'): text('Reconstructed Haplotypes')

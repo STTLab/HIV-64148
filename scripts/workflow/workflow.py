@@ -126,4 +126,4 @@ class Worker(object):
         tracemalloc.stop()
         
         logger.info('Generating report')
-        generate_report_skeleton(self.job_id, f'{self.output_dir}/haplotypes.final.fa', f'{self.output_dir}/hiv-64148_report.html', f'{self.output_dir}/qc/{Path(self._input_fastq).stem}_NanoPlot-report.html', {'runtime': self.get_runtime(), 'blast_result': blast['output']['blast_result'], 'peak_mem': self.get_peak_mem()})
+        generate_report_skeleton(self.job_id, f'{self.output_dir}/haplotypes.final.fa', f'{self.output_dir}/hiv-64148_report.html', f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html', {'runtime': self.get_runtime(), 'blast_result': blast['output']['blast_result'], 'peak_mem': self.get_peak_mem()})

@@ -22,7 +22,7 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     cmd = [
         *settings["softwares"]["NanoPlot"].split(),
         '--no_static', '--N50',
-        '--prefix', Path(input_file).stem,
+        '--prefix', f'{Path(input_file).stem}_',
         '--outdir', output_dir,
         '--threads', THREADS
     ]
