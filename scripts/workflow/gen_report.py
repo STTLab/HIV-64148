@@ -51,20 +51,26 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                                 with tag('tr'):
                                     # Time used
                                     with tag('th', klass='table-secondary'): text('Wall clock time')
-                                    with tag('td'): text(worker.get_runtime())
+                                    with tag('td'): text(str(worker.get_runtime()))
                                 # Peak memory usage
                                 peak_mem = worker.get_peak_mem()
                                 with tag('tr'):
                                     with tag('th', klass='table-secondary'): text('Peak memory usage')
                                 with tag('tr'):
                                     with tag('td'): text('Strainline')
-                                    with tag('td'): text(round(peak_mem['strainline'], 2))
+                                    with tag('td'): 
+                                        text(round(peak_mem['strainline'], 2))
+                                        text(' Mib')
                                 with tag('tr'):
                                     with tag('td'): text('BLAST')
-                                    with tag('td'): text(round(peak_mem['blast'], 2))
+                                    with tag('td'): 
+                                        text(round(peak_mem['blast'], 2))
+                                        text(' Mib')
                                 with tag('tr'):
                                     with tag('td'): text('Snippy')
-                                    with tag('td'): text(round(peak_mem['snippy']))
+                                    with tag('td'): 
+                                        text(round(peak_mem['snippy']))
+                                        text(' Mib')
                             pass
                     if nanoplot_html:
                         with tag('a', klass='btn btn-primary', href=f'../{nanoplot_html}'): text('QC Report')
