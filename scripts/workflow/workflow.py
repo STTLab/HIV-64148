@@ -38,9 +38,8 @@ class Worker(object):
         self._input_fastq = input_fastq
         if os.path.exists(output_dir):
             if overwrite:
-                os.rmdir(output_dir)
+                shutil.rmtree(output_dir)
                 os.makedirs(output_dir)
-                return
         self.output_dir = output_dir
         return self.job_id
 

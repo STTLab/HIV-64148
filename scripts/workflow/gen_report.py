@@ -50,7 +50,7 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                                 with tag('tr'):
                                     # Time used
                                     with tag('th', klass='table-secondary'): text('Wall clock time')
-                                    with tag('td'): text(worker_info['runtime'])
+                                    with tag('td'): text(str(worker_info['runtime']))
                                 # Peak memory usage
                                 with tag('tr'):
                                     with tag('th', klass='table-secondary', colspan='2'): text('Peak memory usage')
