@@ -1,4 +1,5 @@
 
+import re
 import os
 import glob
 import shutil
@@ -6,13 +7,36 @@ import tempfile
 import subprocess
 import pandas as pd
 from Bio import SeqIO
+from pathlib import Path
 
 from utilities.apis import EutilsNCBI
 from multiprocessing import cpu_count
 from utilities.settings import settings
 from utilities.logger import logger
+from utilities.file_handler import FASTA
 
-THREADS = cpu_count()
+THREADS = str(cpu_count())
+
+def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
+    if input_type not in ['fastq', 'fasta', 'fastq_rich', 'fastq_minimal', 'summary', 'bam', 'ubam', 'cram']: raise Exception('Format Error.')
+    cmd = [
+        *settings["softwares"]["NanoPlot"].split(),
+        '--no_static', '--N50',
+        '--prefix', Path(input_file).stem,
+        '--outdir', output_dir,
+        '--threads', THREADS
+    ]
+    # If file is larger than 1Gib, declare as a huge input.
+    if os.stat(input_file).st_size > (1024^3): cmd.append('--huge')
+    if filtering_options:
+        for key, val in zip(filtering_options.keys(), filtering_options.values()):
+            cmd.append(f'--{key}')
+            cmd.append(val)
+    cmd.append(f'--{input_type}')
+    cmd.append(input_file)
+    
+    process = subprocess.run(cmd)
+    return process.returncode
 
 def strainline(
         input_fastq,
@@ -54,7 +78,7 @@ def strainline(
         '--correctErr', str(err_cor),
         '--threads', str(threads)
     ]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.run(cmd)
     return process.returncode
 
 class BLAST:
@@ -129,7 +153,6 @@ class BLAST:
         if not os.path.exists(cls.db_path):
             raise Exception(f'Database {dbtitle} not found in {cls.db_path}.')
         output_file = f'{output_dir}/haplotype.blast.csv'
-        cmd =  settings['softwares']['blast'] + f'-db {dbtitle} -query {query_fasta} -out {output_file} -outfmt 18', '-num_threads', str(threads)
         cmd =  settings['softwares']['blast']['blastn'] + f' -db {cls.db_path}/{dbtitle} -query {query_fasta} -out {output_file} -outfmt 6 -num_threads {str(threads)}'
         ps1 = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = ps1.communicate()
@@ -145,6 +168,12 @@ class BLAST:
                 'blast_result': output_file
             }
         }
+    @classmethod
+    def get_subtypes(cls, dbtitle, accession):
+        iden_seq = FASTA.read_and_extract(f'{cls.db_path}/{dbtitle}', accession)
+        subtype_regex = re.compile(r'CRF[0-9]{2}_[A-Z]{2}|subtype_[A,B,C,D,F1,F2,G]')
+        subtype = subtype_regex.findall(iden_seq.description)[0]
+        return subtype
     
     class BLASTResult(object):
         def __init__(self, data: pd.DataFrame) -> None:
@@ -166,6 +195,16 @@ class BLAST:
             data = pd.read_csv(file, delimiter=delim, header=None, names=col_names)
             return BLAST.BLASTResult(data)
         
+        def get_top(self, n):
+            df = self.data.copy()
+            # sort by bitscore, grouped by `qseqid` and get top `n` records from each group.
+            sorted_df = df.sort_values('bitscore',ascending = False).groupby('qseqid').head(n)
+            # Sort again by the original index in order to group the same group togeather.
+            sorted_df = sorted_df.reset_index().sort_values('index')
+            # Drop the original index.
+            sorted_df = sorted_df.reset_index(drop=True).drop(['index'], axis=1)
+            return sorted_df
+
         def get_iden(self, qseqid: str|None=None) -> pd.DataFrame:
             '''
             Retrieve data from BLAST result.
