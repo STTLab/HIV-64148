@@ -3,6 +3,7 @@
         "strainline"            : "strainline.sh",
         "minimap2"              : "minimap2",
         "snippy"                : "micromamba run -n venv snippy",
+        "NanoPlot"              : "micromamba run -n nanoplot NanoPlot",
         "blast"                 : {
                                     "blastn" : "micromamba run -n venv blastn",
                                     "makedb" : "micromamba run -n venv makeblastdb"
