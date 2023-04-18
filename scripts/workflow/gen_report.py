@@ -99,7 +99,7 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                         doc.asis(generate_collapse(f'Haplotype {i+1}', [summary_table, blast_table, drug_resistant]))
             doc.asis(generate_footer())
             doc.asis(script_plot_doughnut('haplotype-chart', 'Haplotype Abundance', hap_ids, hap_freq))
-            doc.asis(script_plot_doughnut('subtype-chart', 'Subtype composition', subtype_count.keys(), subtype_count.values()))
+            doc.asis(script_plot_doughnut('subtype-chart', 'Subtype composition', list(subtype_count.keys()), list(subtype_count.values())))
     with open(output, 'w') as html:
         html.write(indent(doc.getvalue()))
 
