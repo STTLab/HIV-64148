@@ -1,4 +1,5 @@
 
+import glob
 import os, sys
 import subprocess
 from pathlib import Path
@@ -72,6 +73,7 @@ def check_requirements(repair: bool=False):
             setup_workflow()
 
 def setup_workflow():
+    [ os.symlink(file, '/usr/local/bin', target_is_directory=True) for file in glob.glob('/opt/Strainline/src/*')]
     rep_ids: dict = settings['data']['variant_calling']['rep_ids']
     rep_fasta = settings['data']['variant_calling']['rep_fasta']
     if not os.path.exists(rep_fasta): 
