@@ -194,6 +194,30 @@ def generate_footer():
                 text('(c) 2023 MEDCMU, HIV-64148 pipeline')
     return doc.getvalue()
 
+def level_to_badge_class(level):
+    match level:
+        case 'CRITICAL': return 'badge rounded-pill bg-danger text-white'
+        case 'SEVERE_WARNING'|'WARNING':
+            return 'badge rounded-pill bg-warning text-dark'
+        case 'OK': return 'badge rounded-pill bg-success text-white'
+        case 'NOTE': return 'badge rounded-pill bg-info text-dark'
+
+def generate_mutation_profile(data):
+    doc, tag, text = Doc().tagtext()
+    with tag('div', klass='overflow-auto'):
+        with tag('h5'): text('Mutation Profile')
+        with tag('h6'): text('Impressions')
+        with tag('table', klass='table table-hover'):
+            with tag('thead'):
+                with tag('th'): text('Severity')
+                with tag('th'): text('Note')
+            with tag('tbody'):
+                for level, message in data:
+                    with tag('td', klass=[level]): text(level)
+                    with tag('td'): text(message)
+
+    return doc.getvalue()
+
 def generate_drug_resistant_profile():
     doc, tag, text = Doc().tagtext()
     with tag('h5'): text('Drug resistant Profile')
