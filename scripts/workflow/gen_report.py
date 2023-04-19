@@ -20,7 +20,8 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
         with tag('head'):
             doc.stag('meta', charset='utf-8')
             doc.stag('meta', name='viewport', content='width=device-width, initial-scale=1')
-            with tag('title'): text('HIV-64148 Report')
+            with tag('title'):
+                text('HIV-64148 Report')
             doc.stag(
                 'link',
                 href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css',
@@ -45,35 +46,43 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                     text(f'run id: {run_id}')
                 if worker_info:
                     with tag('section'):
-                        with tag('p'): 
+                        with tag('p'):
                             with tag('table', klass='table table-bordered'):
                                 with tag('tr'):
                                     # Time used
-                                    with tag('th', klass='table-secondary'): text('Wall clock time')
-                                    with tag('td'): text(str(worker_info['runtime']))
+                                    with tag('th', klass='table-secondary'):
+                                        text('Wall clock time')
+                                    with tag('td'):
+                                        text(str(worker_info['runtime']))
                                 # Peak memory usage
                                 with tag('tr'):
-                                    with tag('th', klass='table-secondary', colspan='2'): text('Peak memory usage')
+                                    with tag('th', klass='table-secondary', colspan='2'):
+                                        text('Peak memory usage')
                                 with tag('tr'):
-                                    with tag('td'): text('Strainline')
+                                    with tag('td'):
+                                        text('Strainline')
                                     with tag('td'):
                                         text(worker_info['peak_mem']['strainline'])
                                         text(' Mib')
                                 with tag('tr'):
-                                    with tag('td'): text('BLAST')
+                                    with tag('td'):
+                                        text('BLAST')
                                     with tag('td'):
                                         text(worker_info['peak_mem']['blast'])
                                         text(' Mib')
                                 with tag('tr'):
-                                    with tag('td'): text('Snippy')
+                                    with tag('td'):
+                                        text('Snippy')
                                     with tag('td'):
                                         text(worker_info['peak_mem']['snippy'])
                                         text(' Mib')
                     if nanoplot_html:
-                        with tag('a', klass='btn btn-primary', href=nanoplot_html, target='_blank'): text('QC Report')
-                        
+                        with tag('a', klass='btn btn-primary', href=nanoplot_html, target='_blank'):
+                            text('QC Report')
+
                 with tag('section'):
-                    with tag('h5'): text('Reconstructed Haplotypes')
+                    with tag('h5'):
+                        text('Reconstructed Haplotypes')
                     with tag('div', klass='row'):
                         with tag('div', klass='col-sm'):
                             # Haplotype composition plot
@@ -84,7 +93,8 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                             subtype_count = {}
                             for iden in blast_top_iden:
                                 subtype = BLAST.get_subtypes('32hiv1_default_db', iden)
-                                if subtype in subtype_count.keys(): subtype_count[subtype] += 1
+                                if subtype in subtype_count.keys():
+                                    subtype_count[subtype] += 1
                                 else: subtype_count[subtype] = 1
                             doc.asis('<canvas id="subtype-chart"></canvas>')
                     doc.asis(generate_haplotype_table(nhap))
@@ -96,11 +106,16 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                         summary_table = generate_summary_table(seq)
                         blast_table = generate_blast_table(blast_result, seq)
                         drug_resistant = generate_drug_resistant_profile()
-                        doc.asis(generate_collapse(f'Haplotype {i+1}', [summary_table, blast_table, drug_resistant]))
+                        doc.asis(
+                            generate_collapse(
+                                f'Haplotype {i+1}',
+                                [summary_table, blast_table, drug_resistant]
+                            )
+                        )
             doc.asis(generate_footer())
             doc.asis(script_plot_doughnut('haplotype-chart', 'Haplotype Abundance', hap_ids, hap_freq))
             doc.asis(script_plot_doughnut('subtype-chart', 'Subtype composition', list(subtype_count.keys()), list(subtype_count.values())))
-    with open(output, 'w') as html:
+    with open(output, 'w', encoding='utf-8') as html:
         html.write(indent(doc.getvalue()))
 
 def generate_haplotype_table(nhaplotypes):
@@ -143,14 +158,17 @@ def generate_summary_table(seq):
     }
     doc, tag, text = Doc().tagtext()
     with tag('div'):
-        with tag('h5'): text('Summary')
+        with tag('h5'):
+            text('Summary')
         with tag('div', klass='row'):
             with tag('div', klass='col-4'):
                 with tag('table', klass='table table-bordered'):
                     for key, val in zip(data.keys(), data.values()):
                         with tag('tr'):
-                            with tag('th', klass='table-secondary'): text(key)
-                            with tag('td'): text(val)
+                            with tag('th', klass='table-secondary'):
+                                text(key)
+                            with tag('td'):
+                                text(val)
             with tag('div', klass='col-8'):
                 with tag('div', klass='overflow-auto p-3 mb-3 mb-md-0 me-md-3 bg-light', style='max-width: 100%; max-height: 165px;'): text(f'>{seq.description}\n{str(seq.seq)}')
     return doc.getvalue()
@@ -159,30 +177,46 @@ def generate_blast_table(blast_result: BLAST.BLASTResult, seq: SeqIO.SeqRecord):
     blast_top_iden = blast_result.get_top(5)
     doc, tag, text = Doc().tagtext()
     with tag('div'):
-        with tag('h5', klass='mt-4'): text('BLAST Result')
+        with tag('h5', klass='mt-4'):
+            text('BLAST Result')
         with tag('table', klass='table table-hover'):
             with tag('thead'):
                 with tag('tr'):
-                    with tag('th'): text('#')
-                    with tag('th'): text('Query')
-                    with tag('th'): text('Matched')
-                    with tag('th'): text('Subtype')
-                    with tag('th'): text('% Identity')
-                    with tag('th'): text('Length')
-                    with tag('th'): text('mismatch')
-                    with tag('th'): text('bitscore')
+                    with tag('th'):
+                        text('#')
+                    with tag('th'):
+                        text('Query')
+                    with tag('th'):
+                        text('Matched')
+                    with tag('th'):
+                        text('Subtype')
+                    with tag('th'):
+                        text('% Identity')
+                    with tag('th'):
+                        text('Length')
+                    with tag('th'):
+                        text('mismatch')
+                    with tag('th'):
+                        text('bitscore')
             with tag('tbody'):
                 for i, record in enumerate(blast_top_iden.loc[blast_top_iden['qseqid']==seq.id].to_numpy()):
                     with tag('tr'):
-                        with tag('td'): text(i+1)
-                        with tag('td'): text(record[0])
-                        with tag('td'): 
+                        with tag('td'):
+                            text(i+1)
+                        with tag('td'):
+                            text(record[0])
+                        with tag('td'):
                             with tag('a', href=f'https://www.ncbi.nlm.nih.gov/nuccore/{record[1]}', target='_blank'): text(record[1])
-                        with tag('td'): text(BLAST.get_subtypes('32hiv1_default_db', record[1]))
-                        with tag('td'): text(record[2])
-                        with tag('td'): text(record[3])
-                        with tag('td'): text(record[4])
-                        with tag('td'): text(record[11])
+                        with tag('td'):
+                            text(BLAST.get_subtypes('32hiv1_default_db', record[1]))
+                        with tag('td'):
+                            text(record[2])
+                        with tag('td'):
+                            text(record[3])
+                        with tag('td'):
+                            text(record[4])
+                        with tag('td'):
+                            text(record[11])
     return doc.getvalue()
 
 def generate_footer():
@@ -196,31 +230,41 @@ def generate_footer():
 
 def level_to_badge_class(level):
     match level:
-        case 'CRITICAL': return 'badge rounded-pill bg-danger text-white'
+        case 'CRITICAL':
+            return 'badge rounded-pill bg-danger text-white'
         case 'SEVERE_WARNING'|'WARNING':
             return 'badge rounded-pill bg-warning text-dark'
-        case 'OK': return 'badge rounded-pill bg-success text-white'
-        case 'NOTE': return 'badge rounded-pill bg-info text-dark'
+        case 'OK':
+            return 'badge rounded-pill bg-success text-white'
+        case 'NOTE':
+            return 'badge rounded-pill bg-info text-dark'
 
 def generate_mutation_profile(data):
     doc, tag, text = Doc().tagtext()
     with tag('div', klass='overflow-auto'):
-        with tag('h5'): text('Mutation Profile')
-        with tag('h6'): text('Impressions')
+        with tag('h5'):
+            text('Mutation Profile')
+        with tag('h6'):
+            text('Impressions')
         with tag('table', klass='table table-hover'):
             with tag('thead'):
-                with tag('th'): text('Severity')
-                with tag('th'): text('Note')
+                with tag('th'):
+                    text('Severity')
+                with tag('th'):
+                    text('Note')
             with tag('tbody'):
                 for level, message in data:
-                    with tag('td', klass=[level]): text(level)
-                    with tag('td'): text(message)
+                    with tag('td', klass=[level]):
+                        text(level)
+                    with tag('td'):
+                        text(message)
 
     return doc.getvalue()
 
 def generate_drug_resistant_profile():
     doc, tag, text = Doc().tagtext()
-    with tag('h5'): text('Drug resistant Profile')
+    with tag('h5'):
+        text('Drug resistant Profile')
     return doc.getvalue()
 
 def script_plot_doughnut(element_id, dataset_name, labels, frequencies):
@@ -237,5 +281,6 @@ def script_plot_doughnut(element_id, dataset_name, labels, frequencies):
         text(dataset_name)
         text('", data:')
         text(str(frequencies) + ',')
-        text('\n\t\tborderWidth: 1\n\t}]\n},\noptions: { plugins: { legend:{position: "right"},}}});}')
+        text('\n\t\tborderWidth: 1\n\t}]\n},')
+        text('\noptions: { plugins: { legend:{position: "right"},}}});}')
     return doc.getvalue()
