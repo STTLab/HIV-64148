@@ -37,7 +37,7 @@ class EutilsNCBI:
                                 'inputSequence { header, SHA512 }, strain { name }, \
                                 bestMatchingSubtype { displayWithoutDistance, distance }'
                             )[0]['bestMatchingSubtype']['displayWithoutDistance']
-            
+
             seq.description = f'{subtype}; {summary.get("title", "")}'
         except Exception as e:
             raise e
@@ -45,7 +45,7 @@ class EutilsNCBI:
             SeqIO.write(seq, save_to, 'fasta')
             return
         return seq
-    
+
     @classmethod
     def fetch_summery(cls, accession):
         params = {
@@ -60,10 +60,10 @@ class EutilsNCBI:
         try:
             data = res.json()
             data = data['result'][data['result']['uids'][0]]
-        except Exception as e:
-            raise e
+        except Exception as err:
+            raise err
         return data
-    
+
     @classmethod
     def fetch_fasta_parallel(cls, *accession, save_to=None):
         if cls.API_KEY != '____YOUR_KEY____': nproc = 10
@@ -78,10 +78,9 @@ class EutilsNCBI:
         if len(seqs) == 1: return seqs[0]
         return seqs
 
-def hivdb_seq_analysis(sequence, gql_query):
+def hivdb_seq_analysis(sequences, gql_query):
     client: SierraClient = SierraClient()
-    return client.sequence_analysis([sequence], gql_query)
-        
+    return client.sequence_analysis([sequences], gql_query)
 
 def _test():
     accession_list = [
@@ -97,7 +96,7 @@ def _test():
     # print(EutilsNCBI.fetch_fasta_parallel('AF164485.1'))
     # seqs = [EutilsNCBI.fetch_fasta(accession) for accession in accession_list]
     # SeqIO.write(seqs, f'32_HIV1_for_BLAST.fasta', 'fasta')
-    # print(hivdb_seq_analysis(read_haplotype_fa('scripts\\tests\\mock\\HIV1_Strainline_result.fa')))
+    # print(hivdb_seq_analysis(SeqIO.parse('scripts\\tests\\mock\\HIV1_Strainline_result.fa')))
 
 if __name__ == '__main__':
     _test()

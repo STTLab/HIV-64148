@@ -20,7 +20,7 @@ class Simulator(object):
         if num_reads < 0: raise ValueError('Reads must be more than 0.')
         _abun_sum = 0
         for item in inputs:
-            if len(item) != 3: raise ValueError()
+            if len(item) != 3: raise IndexError()
             _abun_sum += item[2]
         if _abun_sum != 100: raise ValueError('Abundance must sum up to 100.')
 
@@ -75,7 +75,7 @@ class Simulator(object):
             logger.error(e)
             return 1
         return 0
-    
+
     @classmethod
     def install_nanosim(cls):
         '''
@@ -90,7 +90,7 @@ class Simulator(object):
         except subprocess.CalledProcessError:
             logger.error('Micormamba not installed. Install Micromamba and try again.')
             exit(1)
-        
+
         subprocess.run(['micromamba', 'create', '-n', 'nanosim', '-c', 'conda-forge', 'python=3.7', '-y'])
         logger.info('Created micromamba environment \'nanosim\' with Python 3.7')
         subprocess.run(['micromamba', 'install', '-n', 'nanosim', '-c', 'bioconda', '-c', 'conda-forge', 'nanosim=3.1.0', '-y'])

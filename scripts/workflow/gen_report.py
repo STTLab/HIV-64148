@@ -170,7 +170,11 @@ def generate_summary_table(seq):
                             with tag('td'):
                                 text(val)
             with tag('div', klass='col-8'):
-                with tag('div', klass='overflow-auto p-3 mb-3 mb-md-0 me-md-3 bg-light', style='max-width: 100%; max-height: 165px;'): text(f'>{seq.description}\n{str(seq.seq)}')
+                with tag('div',
+                        klass='overflow-auto p-3 mb-3 mb-md-0 me-md-3 bg-light',
+                        style='max-width: 100%; max-height: 165px;'
+                    ):
+                    text(f'>{seq.description}\n{str(seq.seq)}')
     return doc.getvalue()
 
 def generate_blast_table(blast_result: BLAST.BLASTResult, seq: SeqIO.SeqRecord):
@@ -230,16 +234,25 @@ def generate_footer():
 
 def level_to_badge_class(level):
     match level:
-        case 'CRITICAL':
+        case 'CRITICAL'|'S':
             return 'badge rounded-pill bg-danger text-white'
-        case 'SEVERE_WARNING'|'WARNING':
+        case 'SEVERE_WARNING'|'WARNING'|'I':
             return 'badge rounded-pill bg-warning text-dark'
-        case 'OK':
+        case 'OK'|'R':
             return 'badge rounded-pill bg-success text-white'
         case 'NOTE':
             return 'badge rounded-pill bg-info text-dark'
 
-def generate_mutation_profile(data):
+def generate_mutation_profile(data: dict) -> str:
+    '''
+    Generate mutation profile table from Stanford HIVDB GraphQL API response.
+
+    Params:
+        - data (dict): HIVDB GraphQL API response in `dict`
+
+    Returns:
+        - `str` : HTML table of validation result
+    '''
     doc, tag, text = Doc().tagtext()
     with tag('div', klass='overflow-auto'):
         with tag('h5'):
@@ -254,11 +267,10 @@ def generate_mutation_profile(data):
                     text('Note')
             with tag('tbody'):
                 for level, message in data:
-                    with tag('td', klass=[level]):
+                    with tag('td', klass=level_to_badge_class(level)):
                         text(level)
                     with tag('td'):
                         text(message)
-
     return doc.getvalue()
 
 def generate_drug_resistant_profile():
