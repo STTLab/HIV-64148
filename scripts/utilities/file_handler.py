@@ -30,3 +30,7 @@ class FASTA(object):
     
     def list_ids(self):
         return tuple(self.sequences.keys())
+
+    @classmethod
+    def write(cls, sequences, output):
+        SeqIO.write(sequences, output, 'fasta')

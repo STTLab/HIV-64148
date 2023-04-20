@@ -2,9 +2,13 @@
 import os, tarfile
 import requests
 import subprocess
-from ..utilities.logger import logger
-from ..utilities.settings import settings
+import numpy as np
+import pandas as pd
+from pathlib import Path
 from tempfile import TemporaryDirectory
+from utilities.logger import logger
+from utilities.settings import settings
+from utilities.file_handler import FASTA
 
 class Simulator(object):
     pre_trained_dir = './tests/pre-trained_models'
@@ -12,7 +16,7 @@ class Simulator(object):
         pass
 
     @classmethod
-    def simulate_metagenome(cls, inputs: list, num_reads: int, model_prefix, perfect=True):
+    def simulate_metagenome(cls, inputs: list, num_reads: int, model_prefix, run_dir, perfect=True):
         '''
         Simulate ONT reads for linear metagenome sample.
         '''
@@ -24,39 +28,38 @@ class Simulator(object):
             _abun_sum += item[2]
         if _abun_sum != 100: raise ValueError('Abundance must sum up to 100.')
 
-        with TemporaryDirectory() as _temp:
-            # Create metadata
-            genome_list = open(f'{_temp}/ref_list.tsv', 'w')
-            abun_list = open(f'{_temp}/abun_list.tsv', 'w')
-            dna_type_list = open(f'{_temp}/dna_type_list.tsv', 'w')
-            abun_list.write(f'Size\t{num_reads}')
+        # Create metadata
+        genome_list = open(f'{run_dir}/ref_list.tsv', 'w')
+        abun_list = open(f'{run_dir}/abun_list.tsv', 'w')
+        dna_type_list = open(f'{run_dir}/dna_type_list.tsv', 'w')
+        abun_list.write(f'Size\t{num_reads}')
 
-            for name, fasta_path, abun in inputs:
-                genome_list.write(f'{name}\t{fasta_path}\n')
-                abun_list.write(f'{name}\t{abun}\n')
-                dna_type_list.write(f'{name}\tlinear\n')
-            genome_list.close()
-            abun_list.close()
+        for name, fasta_path, abun in inputs:
+            genome_list.write(f'{name}\t{fasta_path}\n')
+            abun_list.write(f'{name}\t{abun}\n')
+            dna_type_list.write(f'{name}\tlinear\n')
+        genome_list.close()
+        abun_list.close()
 
-            genome_list = f'{_temp}/ref_list.tsv'
-            abun_list = f'{_temp}/abun_list.tsv'
-            dna_type_list = f'{_temp}/dna_type_list.tsv'
+        genome_list = f'{run_dir}/ref_list.tsv'
+        abun_list = f'{run_dir}/abun_list.tsv'
+        dna_type_list = f'{run_dir}/dna_type_list.tsv'
 
-            cmd = [
-                'simulator.py', 'metagenome',
-                '--genome_list', genome_list,
-                '--abun', abun_list,
-                '--dna_type_list', dna_type_list,
-                '--model_prefix', model_prefix,
-                '--output', f'{_temp}/simulated',
-                '--max_len', '12000',
-                '--min_len', '3500',
-                '--basecaller', 'guppy'
-                '--fastq'
-            ]
-            if perfect:
-                cmd.append('--perfect')
-            subprocess.Popen(cmd)
+        cmd = [
+            'simulator.py', 'metagenome',
+            '--genome_list', genome_list,
+            '--abun', abun_list,
+            '--dna_type_list', dna_type_list,
+            '--model_prefix', model_prefix,
+            '--output', f'{run_dir}/simulated',
+            '--max_len', '12000',
+            '--min_len', '3500',
+            '--basecaller', 'guppy'
+            '--fastq'
+        ]
+        if perfect:
+            cmd.append('--perfect')
+        subprocess.Popen(cmd)
 
     @classmethod
     def _check(cls) -> int:
@@ -114,6 +117,54 @@ class Simulator(object):
             logger.error('Installation error. You may want to manually install the tools and specify path to program in the settings')
             exit(0)
 
-if __name__ == '__main__':
-    sim = Simulator()
-    sim._check()
+class Simulation(object):
+    def __init__(self):
+        self.mode = ''
+        self.dataset = ''
+
+    @classmethod
+    def random(cls, path_to_set, path_to_fasta:str|None=None, prob=None):
+
+        # Random simulation mode
+        cls.mode = np.random.choice(('genome', 'metagenome'), 1)[0]
+
+        if Path(path_to_set).suffix == '.tsv':
+            delim = '\t'
+        else:
+            delim = ','   
+        df = pd.read_csv(path_to_set, sep=delim, )
+
+        # Random number of genomes to include in the simulation
+        if cls.mode == 'genome':
+            n = 1
+        else:
+            n = np.random.randint(1,6)
+
+        # Sampling from dataset
+        choices = list(pd.unique(df['Subtype']))
+        choosen = np.random.choice(choices, n, replace=False, p=prob)
+        selected = []
+        for item in choosen:
+            selected.append(df.loc[df['Subtype'] == item].sample())
+        selected = pd.concat(selected).reset_index(drop=True)
+
+        fasta = FASTA.read(path_to_fasta)
+        with TemporaryDirectory() as _temp:
+            seqs_path = [fasta.extract(id, save_to=f'{_temp}/{selected["ID"]}') for id in selected['ID']]
+            
+            _abun = np.random.randint(low=1, high=10, size=len(selected))
+            abundances = [ p/sum(_abun) for p in _abun ]
+            
+            to_simulate = list(zip(selected['ID'], seqs_path, abundances))
+            Simulator.simulate_metagenome(
+                inputs=to_simulate,
+                num_reads=20000,
+                model_prefix=settings['data']['nanosim']['model'],
+                run_dir=_temp
+            )
+
+    def test_single_genome(self):
+        pass
+
+    def test_metagenome(self):
+        pass

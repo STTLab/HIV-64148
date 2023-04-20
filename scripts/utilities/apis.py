@@ -3,6 +3,7 @@ import requests
 from Bio import SeqIO
 from io import StringIO
 import multiprocessing
+from ratelimiter import RateLimiter
 from sierrapy import SierraClient
 from sierrapy.sierraclient import Sequence
 from utilities.logger import logger
@@ -12,10 +13,16 @@ class EutilsNCBI:
 
     API_KEY = secrets.get('API_KEYS', {}).get('NCBI', '____YOUR_KEY____')
     END_POINT = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
+    RATE_LIMIT = 3
+
+    if API_KEY != '____YOUR_KEY____':
+        RATE_LIMIT = 8
+
     def __init__(self) -> None:
         pass
 
     @classmethod
+    @RateLimiter(max_calls=RATE_LIMIT, period=1.5)
     def fetch_fasta(cls, accession, save_to=None):
         params = {
             'db': 'nucleotide',
@@ -47,6 +54,7 @@ class EutilsNCBI:
         return seq
 
     @classmethod
+    @RateLimiter(max_calls=RATE_LIMIT, period=1.5)
     def fetch_summery(cls, accession):
         params = {
             'db': 'nucleotide',
