@@ -2,8 +2,9 @@
 import sys
 import argparse
 from workflow.workflow import Worker
-from utilities.logger import logger 
+from utilities.logger import logger
 from utilities.requirements import setup_workflow
+from tests.simulator import Simulator
 
 PYTHON_VERSION = sys.version_info
 VERSION = "3.10.6"
@@ -20,7 +21,7 @@ def main():
     parser.add_argument('function')
     parser.add_argument('-i', '--input', type=str, required=False)
     parser.add_argument('-o', '--output_dir', type=str, required=False)
-    
+
     args = parser.parse_args()
     match args.function:
         case 'run':
@@ -35,7 +36,9 @@ def main():
             worker.run_workflow()
         case 'setup':
             setup_workflow()
+        case 'setup_simulator':
+            Simulator.install_nanosim()
         case _: parser.print_help()
-    
+
 if __name__ == '__main__':
     main()
