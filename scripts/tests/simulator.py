@@ -129,13 +129,13 @@ class Simulation(object):
     def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, blinded=False):
 
         # Random simulation mode
-        cls.mode = np.random.choice(('genome', 'metagenome'), 1)[0]
+        cls.mode = 'metagenome' # np.random.choice(('genome', 'metagenome'), 1)[0]
 
         if Path(path_to_metadata).suffix == '.tsv':
             delim = '\t'
         else:
             delim = ','
-        df = pd.read_csv(path_to_metadata, sep=delim, )
+        df = pd.read_csv(path_to_metadata, sep=delim)
 
         # Random number of genomes to include in the simulation
         if cls.mode == 'genome':
