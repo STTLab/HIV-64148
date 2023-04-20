@@ -1,5 +1,5 @@
 
-import os, tarfile
+import os, tarfile, shutil, glob
 import requests
 import subprocess
 import numpy as np
@@ -32,21 +32,22 @@ class Simulator(object):
         genome_list = open(f'{run_dir}/ref_list.tsv', 'w')
         abun_list = open(f'{run_dir}/abun_list.tsv', 'w')
         dna_type_list = open(f'{run_dir}/dna_type_list.tsv', 'w')
-        abun_list.write(f'Size\t{num_reads}')
+        abun_list.write(f'Size\t{num_reads}\n')
 
         for name, fasta_path, abun in inputs:
             genome_list.write(f'{name}\t{fasta_path}\n')
             abun_list.write(f'{name}\t{abun}\n')
-            dna_type_list.write(f'{name}\tlinear\n')
+            dna_type_list.write(f'{name}\t{name}\tlinear\n')
         genome_list.close()
         abun_list.close()
+        dna_type_list.close()
 
         genome_list = f'{run_dir}/ref_list.tsv'
         abun_list = f'{run_dir}/abun_list.tsv'
         dna_type_list = f'{run_dir}/dna_type_list.tsv'
 
         cmd = [
-            'simulator.py', 'metagenome',
+            *settings['softwares']['nanosim']['simulator'].split(), 'metagenome',
             '--genome_list', genome_list,
             '--abun', abun_list,
             '--dna_type_list', dna_type_list,
@@ -54,12 +55,14 @@ class Simulator(object):
             '--output', f'{run_dir}/simulated',
             '--max_len', '12000',
             '--min_len', '3500',
-            '--basecaller', 'guppy'
+            '-t', '32',
+            '--basecaller', 'guppy',
             '--fastq'
         ]
         if perfect:
             cmd.append('--perfect')
-        subprocess.Popen(cmd)
+        process = subprocess.run(cmd)
+        return process.returncode
 
     @classmethod
     def _check(cls) -> int:
@@ -123,22 +126,22 @@ class Simulation(object):
         self.dataset = ''
 
     @classmethod
-    def random(cls, path_to_set, path_to_fasta:str|None=None, prob=None):
+    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, blinded=False):
 
         # Random simulation mode
         cls.mode = np.random.choice(('genome', 'metagenome'), 1)[0]
 
-        if Path(path_to_set).suffix == '.tsv':
+        if Path(path_to_metadata).suffix == '.tsv':
             delim = '\t'
         else:
-            delim = ','   
-        df = pd.read_csv(path_to_set, sep=delim, )
+            delim = ','
+        df = pd.read_csv(path_to_metadata, sep=delim, )
 
         # Random number of genomes to include in the simulation
         if cls.mode == 'genome':
             n = 1
         else:
-            n = np.random.randint(1,6)
+            n = np.random.randint(2,6)
 
         # Sampling from dataset
         choices = list(pd.unique(df['Subtype']))
@@ -146,22 +149,35 @@ class Simulation(object):
         selected = []
         for item in choosen:
             selected.append(df.loc[df['Subtype'] == item].sample())
-        selected = pd.concat(selected).reset_index(drop=True)
+        selected = pd.concat(objs=selected).reset_index(drop=True)
 
         fasta = FASTA.read(path_to_fasta)
+
+        # Start extracting data
         with TemporaryDirectory() as _temp:
-            seqs_path = [fasta.extract(id, save_to=f'{_temp}/{selected["ID"]}') for id in selected['ID']]
-            
-            _abun = np.random.randint(low=1, high=10, size=len(selected))
-            abundances = [ p/sum(_abun) for p in _abun ]
-            
-            to_simulate = list(zip(selected['ID'], seqs_path, abundances))
+            seqs_path = [ fasta.extract(id, save_to=f'{_temp}/{selected["ID"]}') for id in selected['ID'] ]
+
+            while True:
+                abundances = (n*100 for n in np.random.dirichlet(np.ones(len(selected)),size=1)[0])
+                if sum(abundances) == 100:
+                    break
+
+            to_simulate = list(zip(selected['ID'].values, seqs_path, abundances))
+            # Start simulation
             Simulator.simulate_metagenome(
                 inputs=to_simulate,
                 num_reads=20000,
                 model_prefix=settings['data']['nanosim']['model'],
                 run_dir=_temp
             )
+            # Clean up
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            os.makedirs(output_dir)
+            selected.to_csv(f'{output_dir}/pre-simulation-seq.tsv', sep='\t')
+            for file in glob.glob(f'{_temp}/*.fastq'):
+                shutil.move(file, f'{output_dir}')
+
 
     def test_single_genome(self):
         pass
