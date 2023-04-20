@@ -39,7 +39,8 @@
     },
     "data": {
         "blast": {
-            "db_dir": "../data/blast/db"
+            "db_dir": "../data/blast/db",
+            "dbtitle": ""
         },
         "variant_calling": {
             "rep_fasta": "../data/representatives.fasta",

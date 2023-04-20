@@ -5,6 +5,7 @@ from uuid import uuid4
 from yattag.doc import Doc
 from yattag.indentation import indent
 from .components import BLAST
+from utilities.settings import settings
 
 def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_html: str|None=None, worker_info: dict={}):
     def read_haplotype_fa(haplotype_fa):
@@ -92,7 +93,7 @@ def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_h
                             blast_top_iden = blast_result.get_top(1)['sseqid'].to_numpy()
                             subtype_count = {}
                             for iden in blast_top_iden:
-                                subtype = BLAST.get_subtypes('32hiv1_default_db', iden)
+                                subtype = BLAST.get_subtypes(settings['data']['blast']['dbtitle'], iden)
                                 if subtype in subtype_count.keys():
                                     subtype_count[subtype] += 1
                                 else: subtype_count[subtype] = 1
@@ -212,7 +213,7 @@ def generate_blast_table(blast_result: BLAST.BLASTResult, seq: SeqIO.SeqRecord):
                         with tag('td'):
                             with tag('a', href=f'https://www.ncbi.nlm.nih.gov/nuccore/{record[1]}', target='_blank'): text(record[1])
                         with tag('td'):
-                            text(BLAST.get_subtypes('32hiv1_default_db', record[1]))
+                            text(BLAST.get_subtypes(settings['data']['blast']['dbtitle'], record[1]))
                         with tag('td'):
                             text(record[2])
                         with tag('td'):

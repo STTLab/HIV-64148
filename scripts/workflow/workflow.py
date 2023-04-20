@@ -26,7 +26,7 @@ class Worker(object):
 
     def get_peak_mem(self) -> dict:
         return self._stat.get('peak_mem', {})
-    
+
     def get_runtime(self):
         return timedelta(seconds=time.time() - self._stat.get('t_start', time.time()))
 
@@ -89,7 +89,7 @@ class Worker(object):
         tracemalloc.reset_peak()
 
         # BLAST
-        blast = BLAST.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', '32hiv1_default_db', self.output_dir)
+        blast = BLAST.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', settings['data']['blast']['dbtitle'], self.output_dir)
         logger.info('Finished - BLASTN')
 
         # Log memory
@@ -108,7 +108,7 @@ class Worker(object):
             with TemporaryDirectory() as _temp:
                 seq = haplotype_seqs.extract(hap)
                 SeqIO.write(seq, f'{_temp}/{hap}.fasta', 'fasta')
-                subtype = BLAST.get_subtypes('32hiv1_default_db', iden)
+                subtype = BLAST.get_subtypes(settings['data']['blast']['dbtitle'], iden)
                 logger.info(f'Haplotype {hap} identified as {iden}, {subtype}')
                 rep_seqs.extract(rep_ids[subtype], save_to=f'{_temp}/{subtype}.fasta')
                 snippy(
@@ -124,6 +124,6 @@ class Worker(object):
         _, _peak = tracemalloc.get_traced_memory()
         self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.stop()
-        
+
         logger.info('Generating report')
         generate_report_skeleton(self.job_id, f'{self.output_dir}/haplotypes.final.fa', f'{self.output_dir}/hiv-64148_report.html', f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html', {'runtime': self.get_runtime(), 'blast_result': blast['output']['blast_result'], 'peak_mem': self.get_peak_mem()})
