@@ -126,7 +126,7 @@ class Simulation(object):
         self.dataset = ''
 
     @classmethod
-    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, blinded=False):
+    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, blinded=False, perfect=True):
 
         # Random simulation mode
         cls.mode = 'metagenome' # np.random.choice(('genome', 'metagenome'), 1)[0]
@@ -135,7 +135,7 @@ class Simulation(object):
             delim = '\t'
         else:
             delim = ','
-        df = pd.read_csv(path_to_metadata, sep=delim)
+        df = pd.read_csv(path_to_metadata, sep=delim, )
 
         # Random number of genomes to include in the simulation
         if cls.mode == 'genome':
@@ -155,10 +155,12 @@ class Simulation(object):
 
         # Start extracting data
         with TemporaryDirectory() as _temp:
-            seqs_path = [ fasta.extract(id, save_to=f'{_temp}/{selected["ID"]}') for id in selected['ID'] ]
+            seqs_path = [ fasta.extract(id, save_to=f'{_temp}/{id}') for id in selected['ID'] ]
 
             while True:
-                abundances = (n*100 for n in np.random.dirichlet(np.ones(len(selected)),size=1)[0])
+                # Randomizing abundance value
+                abun = np.random.dirichlet(np.ones(len(selected)),size=1)[0]
+                abundances = [n*100 for n in abun]
                 if sum(abundances) == 100:
                     break
 
@@ -168,16 +170,19 @@ class Simulation(object):
                 inputs=to_simulate,
                 num_reads=20000,
                 model_prefix=settings['data']['nanosim']['model'],
-                run_dir=_temp
+                run_dir=_temp, perfect=perfect
             )
             # Clean up
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
             os.makedirs(output_dir)
             selected.to_csv(f'{output_dir}/pre-simulation-seq.tsv', sep='\t')
-            for file in glob.glob(f'{_temp}/*.fastq'):
-                shutil.move(file, f'{output_dir}')
-
+            for file in [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*.fastq')]:
+                shutil.move(file, f'{output_dir}',)
+            with open(f'{output_dir}/simulated_all_reads.fastq', 'w') as all_reads:
+                for file in glob.glob(f'{output_dir}/*.fastq'):
+                    reads = open(file, 'r').read()
+                    all_reads.write(reads)
 
     def test_single_genome(self):
         pass

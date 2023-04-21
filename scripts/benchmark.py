@@ -15,6 +15,7 @@ def main():
     )
     parser.add_argument('-refs', '--references', type=str, required=True, help='Multi-fasta file')
     parser.add_argument('-o', '--output_dir', type=str, required=True, help='output directory')
+    parser.add_argument('--perfect', action=argparse.BooleanOptionalAction)
 
     args = parser.parse_args()
     match args.function:
@@ -25,10 +26,11 @@ def main():
                 path_to_metadata=args.metadata,
                 output_dir=f'{args.output_dir}/data',
                 path_to_fasta=args.references,
-                prob=[0.0593007943587783, 0.0019115585574104752, 0.9356866743129009, 0.0013168514506605496, 0.0002548744743213967, 0.00038231171148209506, 0.0, 0.0, 4.247907905356612e-05, 0.0, 0.0, 0.001104456055392719]
+                prob=[0.0593007943587783, 0.0019115585574104752, 0.9356866743129009, 0.0013168514506605496, 0.0002548744743213967, 0.00038231171148209506, 0.0, 0.0, 4.247907905356612e-05, 0.0, 0.0, 0.001104456055392719],
+                perfect=args.perfect
             )
             worker = Worker()
-            job = worker.assign_job(f'{args.output_dir}/data/simulated_aligned_reads.fastq', f'{args.output_dir}/pipeline_output', True)
+            job = worker.assign_job(f'{args.output_dir}/data/simulated_all_reads.fastq', f'{args.output_dir}/pipeline_output', True)
             logger.info(f'Job created (id:{job})')
             worker.run_workflow()
 
