@@ -177,8 +177,11 @@ class Simulation(object):
                 shutil.rmtree(output_dir)
             os.makedirs(output_dir)
             selected.to_csv(f'{output_dir}/pre-simulation-seq.tsv', sep='\t')
-            for file in [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*.fastq')]:
-                shutil.move(file, f'{output_dir}',)
+            keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
+            for file in keep:
+                if os.path.exists(f'{output_dir}/{Path(file).name}'):
+                    os.remove(f'{output_dir}/{Path(file).name}')
+                shutil.move(file, f'{output_dir}')
             with open(f'{output_dir}/simulated_all_reads.fastq', 'w') as all_reads:
                 for file in glob.glob(f'{output_dir}/*.fastq'):
                     reads = open(file, 'r').read()

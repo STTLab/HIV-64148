@@ -6,6 +6,7 @@ from yattag.doc import Doc
 from yattag.indentation import indent
 from .components import BLAST
 from utilities.settings import settings
+from utilities.apis import SequenceAnalysisResult
 
 def generate_report_skeleton(run_id, haplotype_file: str, output:str, nanoplot_html: str|None=None, worker_info: dict={}):
     def read_haplotype_fa(haplotype_fa):
@@ -244,7 +245,7 @@ def level_to_badge_class(level):
         case 'NOTE':
             return 'badge rounded-pill bg-info text-dark'
 
-def generate_mutation_profile(data: dict) -> str:
+def generate_mutation_profile(data: SequenceAnalysisResult) -> str:
     '''
     Generate mutation profile table from Stanford HIVDB GraphQL API response.
 
@@ -267,14 +268,15 @@ def generate_mutation_profile(data: dict) -> str:
                 with tag('th'):
                     text('Note')
             with tag('tbody'):
-                for level, message in data:
+                for info in data.:
+                    level, message = info['levle'], info['message']
                     with tag('td', klass=level_to_badge_class(level)):
                         text(level)
                     with tag('td'):
                         text(message)
     return doc.getvalue()
 
-def generate_drug_resistant_profile():
+def generate_drug_resistant_profile(data:dict):
     doc, tag, text = Doc().tagtext()
     with tag('h5'):
         text('Drug resistant Profile')

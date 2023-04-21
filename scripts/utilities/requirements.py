@@ -14,7 +14,7 @@ def return_code(code: int):
     '''
     if sys.version_info[1] < 10:
         return code
-    
+
     match code:
         case 0: return 'OK'
         case 1: return 'ERROR'
@@ -76,12 +76,13 @@ def setup_workflow():
     [ os.symlink(file, '/usr/local/bin', target_is_directory=True) for file in glob.glob('/opt/Strainline/src/*')]
     rep_ids: dict = settings['data']['variant_calling']['rep_ids']
     rep_fasta = settings['data']['variant_calling']['rep_fasta']
-    if not os.path.exists(rep_fasta): 
+    if not os.path.exists(rep_fasta):
         logger.info('Retrieving representative sequences for each HIV-1 subtype.')
         os.makedirs(Path(rep_fasta).parent)
     EutilsNCBI.fetch_fasta_parallel(list(rep_ids.values()), save_to=rep_fasta)
 
     logger.info('Creating BLAST database of 32 selected HIV-1 sequences.')
+
     BLAST.accession_to_db(
         '32hiv1_default_db',
         [

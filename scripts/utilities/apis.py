@@ -3,7 +3,6 @@ import requests
 from Bio import SeqIO
 from io import StringIO
 import multiprocessing
-from ratelimiter import RateLimiter
 from sierrapy import SierraClient
 from sierrapy.sierraclient import Sequence
 from utilities.logger import logger
@@ -88,7 +87,29 @@ class EutilsNCBI:
 
 def hivdb_seq_analysis(sequences, gql_query):
     client: SierraClient = SierraClient()
-    return client.sequence_analysis([sequences], gql_query)
+    conv_to_result = [ SequenceAnalysisResult(data=result) for result in client.sequence_analysis([*sequences], gql_query)]
+    return conv_to_result
+
+class SequenceAnalysisResult(object):
+    def __init__(self, data:dict, **kwargs) -> None:
+        self.inputSequence = data['inputSequence']
+        self.availableGenes = [''.join(x.values()) for x in data['availableGenes']]
+        self.bestMatchingSubtype = data['bestMatchingSubtype']
+        self.drugResistance = [ self.DrugResistantResult(item) for item in data['drugResistance'] ]
+        data.update(kwargs)
+        for key, value in data.items():
+            setattr(self, key, value)
+        return
+    class DrugResistantResult(object):
+        def __init__(self, data: dict) -> None:
+            self.gene = data['gene']['name']
+            self.drug_abvr = data['drug']['name']
+            self.drug_fullname = str.capitalize(data['drug']['fullName'])
+            self.drug_class = data['drug']['fullName']
+            self.SIR = data['drugScores']['SIR']
+            self.resistant_score = data['drugScores']['score']
+            self.resistant_level = data['drugScores']['level']
+            self.resistant_text = data['drugScores']['text']
 
 def _test():
     accession_list = [
