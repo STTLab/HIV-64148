@@ -1,0 +1,44 @@
+inputSequence {
+  header
+  MD5
+  SHA512
+}
+availableGenes {
+  name
+},
+# Subtype
+bestMatchingSubtype {
+  displayWithoutDistance,
+  distancePcnt,
+  distance,
+},
+# Drug resistance
+drugResistance (includeGenes: [CA, PR, RT, IN]) {
+  gene { name },
+  drugScores {
+    SIR, score, level, text,
+    drug {
+      name, fullName
+      drugClass {
+        fullName
+      }
+    }
+  }
+}
+# Mutations
+validationResults(includeGenes: [CA, PR, RT, IN]) {
+  level
+  message
+},
+frameShifts {
+  gene { name },
+  position,
+  size,
+  text
+},
+mutationPrevalences {
+  boundMutation {
+    text
+  },
+  matched { subtypes { AA, percentageTreated, subtype { name } } }
+}
