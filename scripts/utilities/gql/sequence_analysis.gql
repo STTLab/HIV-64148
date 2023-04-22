@@ -14,12 +14,13 @@ bestMatchingSubtype {
 },
 # Drug resistance
 drugResistance (includeGenes: [CA, PR, RT, IN]) {
-  gene { name },
+  gene { name, drugClasses {name, hasDrugResistMutations, hasSurveilDrugResistMutations, hasRxSelectedMutations} },
   drugScores {
     SIR, score, level, text,
     drug {
       name, fullName
       drugClass {
+        name,
         fullName
       }
     }
@@ -29,6 +30,34 @@ drugResistance (includeGenes: [CA, PR, RT, IN]) {
 validationResults(includeGenes: [CA, PR, RT, IN]) {
   level
   message
+},
+alignedGeneSequences {
+  gene {name},
+  matchPcnt,
+  prettyPairwise {
+    positionLine,
+    refAALine,
+    alignedNAsLine,
+    mutationLine
+  }
+}
+mutations{
+  text
+  gene { name },
+  reference,
+  position,
+  AAs,
+  triplet,
+  primaryType,
+  isDeletion,
+  isInsertion,
+  isIndel,
+  isDRM,
+  isApobecMutation,
+  isApobecDRM,
+  isUnusual,
+  hasStop,
+  comments {name,type,text}
 },
 frameShifts {
   gene { name },

@@ -1,5 +1,6 @@
 
 import requests
+import pandas as pd
 from Bio import SeqIO
 from io import StringIO
 import multiprocessing
@@ -53,7 +54,6 @@ class EutilsNCBI:
         return seq
 
     @classmethod
-    @RateLimiter(max_calls=RATE_LIMIT, period=1.5)
     def fetch_summery(cls, accession):
         params = {
             'db': 'nucleotide',
@@ -95,21 +95,96 @@ class SequenceAnalysisResult(object):
         self.inputSequence = data['inputSequence']
         self.availableGenes = [''.join(x.values()) for x in data['availableGenes']]
         self.bestMatchingSubtype = data['bestMatchingSubtype']
-        self.drugResistance = [ self.DrugResistantResult(item) for item in data['drugResistance'] ]
-        data.update(kwargs)
-        for key, value in data.items():
-            setattr(self, key, value)
+        self.drugResistance = self.DrugResistantProfile(data['drugResistance'])
+        self.mutations = self.MutationProfile(data['mutations'])
+        self.alignGeneSequences = [ self.AlignSequences(aln['gene']['name'], aln['matchPcnt'], aln['prettyPairwise']) for aln in data['alignedGeneSequences']]
+        self.validationResults = data['validationResults']
         return
-    class DrugResistantResult(object):
+
+    class DrugResistantProfile(object):
         def __init__(self, data: dict) -> None:
-            self.gene = data['gene']['name']
-            self.drug_abvr = data['drug']['name']
-            self.drug_fullname = str.capitalize(data['drug']['fullName'])
-            self.drug_class = data['drug']['fullName']
-            self.SIR = data['drugScores']['SIR']
-            self.resistant_score = data['drugScores']['score']
-            self.resistant_level = data['drugScores']['level']
-            self.resistant_text = data['drugScores']['text']
+            results = []
+            for record in data:
+                for item in record['drugScores']:
+                    drug_data = item['drug']
+                    data_dict = {
+                        'gene': record['gene']['name'],
+                        'drug': str.capitalize(drug_data['fullName']),
+                        'drug_class': drug_data['drugClass']['fullName'],
+                        'score': item['score'],
+                        'level': item['level'],
+                        'text': item['text'],
+                        'SIR': item['SIR']
+                    }
+                    results.append(data_dict)
+            self.results = results
+
+        def to_dataframe(self) -> pd.DataFrame:
+            return pd.DataFrame(self.results)
+
+    class MutationProfile(object):
+        def __init__(self, data: dict) -> None:
+            results = []
+            for record in data:
+                data_dict = {
+                    'ID': record['text'],
+                    'REF': record['reference'],
+                    'POS': record['position'],
+                    'ALT': record['AAs'],
+                    'Type': record['primaryType'],
+                    'gene': record['gene']['name'],
+                    'is_Apobec': record['isApobecMutation'],
+                    'is_DRM': record['isDRM'],
+                    'is_ApobecDRM': record['isApobecDRM'],
+                    'is_Unusual': record['isUnusual'],
+                    'has_Stop': record['hasStop'],
+                    'comments': record['comments'][0]['text'] if len(record['comments'])>0 else ''
+                }
+                results.append(data_dict)
+            self.results = results
+
+        def to_dataframe(self):
+            return pd.DataFrame(self.results)
+
+    class AlignSequences(object):
+        def __init__(self, gene, match_pcnt, align_data) -> None:
+            self.gene = gene
+            self.match_pcnt = match_pcnt
+            self.align = self.PrettyPairwise(align_data)
+        class PrettyPairwise(object):
+            def __init__(self, prettyPairwise) -> None:
+                self.prettyPairwise = prettyPairwise
+                self.text = str(self)
+
+            def __str__(self):
+                items = tuple(zip(
+                            self.prettyPairwise['positionLine'],
+                            self.prettyPairwise['refAALine'],
+                            self.prettyPairwise['alignedNAsLine'],
+                            self.prettyPairwise['mutationLine']
+                            )
+                        )
+                increment = 20
+                f = 0
+                t = f+increment
+                pretty = ''
+                while True:
+                    for row in [1,2,3]:
+                        if row == 2:
+                            pretty += str(f+1).center(4)
+                        else:
+                            pretty += ' '*4
+                        for item in items[f:t]:
+                            pretty += item[row].center(3)
+                            pretty += ' '
+                        pretty += '\n'
+                    pretty += '\n'
+                    f=t
+                    t+=increment
+                    if t > len(items): t = len(items)
+                    if f>=len(items): break
+                return pretty
+
 
 def _test():
     accession_list = [
