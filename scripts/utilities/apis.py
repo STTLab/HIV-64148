@@ -22,7 +22,6 @@ class EutilsNCBI:
         pass
 
     @classmethod
-    @RateLimiter(max_calls=RATE_LIMIT, period=1.5)
     def fetch_fasta(cls, accession, save_to=None):
         params = {
             'db': 'nucleotide',
@@ -87,8 +86,12 @@ class EutilsNCBI:
 
 def hivdb_seq_analysis(sequences, gql_query):
     client: SierraClient = SierraClient()
-    conv_to_result = [ SequenceAnalysisResult(data=result) for result in client.sequence_analysis([*sequences], gql_query)]
-    return conv_to_result
+    try :
+        response = client.sequence_analysis([*sequences], gql_query)
+        conv_to_result = [ SequenceAnalysisResult(data=result) for result in response ]
+        return conv_to_result
+    except ConnectionError:
+        return
 
 class SequenceAnalysisResult(object):
     def __init__(self, data:dict, **kwargs) -> None:
@@ -110,7 +113,7 @@ class SequenceAnalysisResult(object):
                     data_dict = {
                         'gene': record['gene']['name'],
                         'drug': str.capitalize(drug_data['fullName']),
-                        'drug_class': drug_data['drugClass']['fullName'],
+                        'drug_class': drug_data['drugClass']['name'],
                         'score': item['score'],
                         'level': item['level'],
                         'text': item['text'],
@@ -145,6 +148,9 @@ class SequenceAnalysisResult(object):
 
         def to_dataframe(self):
             return pd.DataFrame(self.results)
+
+        def to_list(self):
+            return self.to_dataframe().to_dict('records')
 
     class AlignSequences(object):
         def __init__(self, gene, match_pcnt, align_data) -> None:
@@ -184,6 +190,9 @@ class SequenceAnalysisResult(object):
                     if t > len(items): t = len(items)
                     if f>=len(items): break
                 return pretty
+
+            def to_string(self):
+                return self.__str__()
 
 
 def _test():
