@@ -3,7 +3,7 @@ import os
 import json
 
 SETTINGS, SECRETS = None, None
-allow_settings = [f'{os.getcwd()}\\settings\\settings.json', f'/hiv64148/settings/settings.json', f'{os.getcwd()}/settings/settings.json']
+allow_settings = [f'{os.getcwd()}\\settings\\settings.json', '../settings/settings.json', f'/hiv64148/settings/settings.json', f'{os.getcwd()}/settings/settings.json']
 for p in allow_settings:
     if os.path.exists(p):
         SETTINGS = p
@@ -12,7 +12,7 @@ for p in allow_settings:
             settings = dict(json.load(f))
         break
 
-allow_secrets = [f'{os.getcwd()}\\settings\\secrets.json', f'/hiv64148/settings/secrets.json', f'{os.getcwd()}/settings/secrets.json']
+allow_secrets = [f'{os.getcwd()}\\settings\\secrets.json', '../settings/secrets.json', f'/hiv64148/settings/secrets.json', f'{os.getcwd()}/settings/secrets.json']
 for p in allow_secrets:
     if os.path.exists(p):
         SECRETS = p
@@ -21,5 +21,5 @@ for p in allow_secrets:
             secrets = dict(json.load(f))
         break
 
-if SETTINGS is None: raise FileExistsError('Cannot fine settings.json')
+if SETTINGS is None: raise FileExistsError('Cannot find settings.json')
 if SECRETS is None: raise FileExistsError('Cannot find secret.json')
