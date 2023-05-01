@@ -9,11 +9,13 @@ from pathlib import Path
 from uuid import uuid4, UUID
 from datetime import timedelta
 from tempfile import TemporaryDirectory
+from sierrapy.sierraclient import Sequence
 from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
-from .gen_report import generate_report_skeleton
+from utilities.apis import hivdb_seq_analysis
+from utilities.reporter import report_randerer, context_builder
 
 class Worker(object):
 
@@ -125,5 +127,24 @@ class Worker(object):
         self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.stop()
 
+        gql = open('../utilities/gql/sequence_analysis.gql').read()
+        seqs = [
+            Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta')
+        ]
+        hivdb_result = hivdb_seq_analysis(seqs, gql)
+
         logger.info('Generating report')
-        generate_report_skeleton(self.job_id, f'{self.output_dir}/haplotypes.final.fa', f'{self.output_dir}/hiv-64148_report.html', f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html', {'runtime': self.get_runtime(), 'blast_result': blast['output']['blast_result'], 'peak_mem': self.get_peak_mem()})
+        report_ctx = context_builder.context_builder(
+            haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
+            nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
+            worker_info={
+                'job_id': self.job_id,
+                'run_stats':{
+                    'runtime': self.get_runtime(),
+                    'blast_result': blast['output']['blast_result'],
+                    'peak_mem': self.get_peak_mem()
+                }
+            },
+            hivdb_result=hivdb_result
+        )
+        report_randerer.render_report(report_ctx, f'{self.output_dir}/hiv-64148_report.html')

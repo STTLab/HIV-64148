@@ -1,0 +1,132 @@
+
+{% macro blast_summary(summary, sequence) -%}
+<div name="{{ summary.name }}-summary" class="mt-2">
+  <h5>Summary</h5>
+  <div class="row">
+    <div id="haplotype-summary" class="col-4">
+      <table id="haplotype-summary-table" class="table table-bordered">
+        <tbody>
+          {% for key, value in summary.items() -%}
+          <tr>
+            <th class="table table-secondary">{{ key.capitalize() }}</th>
+            <td>{{ value }}</td>
+          </tr>
+          {% endfor -%}
+        </tbody>
+      </table>
+    </div>
+    <div id="haplotype-sequence" class="col-8">
+      <div id="haplotype-sequence-viewport" class="overflow-auto p-3 mb-3 mb-md-0 me-md-3 bg-light" style="max-width: 100%; max-height: 165px;">
+      {{ sequence }}
+      </div>
+    </div>
+  </div>
+</div>
+{%-endmacro %}
+
+{% macro blast_table(blast_result) -%}
+<h5 class="mt-4">BLAST Result</h5>
+<table id="blast-table" class="table table-hover">
+    <thead>
+        <th>#</th>
+        <th>Query</th>
+        <th>Matched</th>
+        <th>Subtype</th>
+        <th>% Identity</th>
+        <th>Length</th>
+        <th>mismatch</th>
+        <th>bitscore</th>
+    </thead>
+    <tbody>
+        {% for record in blast_result -%}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ record.qseqid }}</td>
+            <td><a href="https://www.ncbi.nlm.nih.gov/nuccore/{{ record.sseqid }}" target='_blank'>{{record.sseqid}}</a></td>
+            <td>{{ record.subtype }}</td>
+            <td>{{ record.piden }}</td>
+            <td>{{ record.length }}</td>
+            <td>{{ record.mismatch }}</td>
+            <td>{{ record.bitsocre }}</td>
+        </tr>
+        {% endfor -%}
+    </tbody>
+</table>
+{%- endmacro %}
+
+{% macro drug_resistant_table(records) -%}
+<table id="drug-resistant-table" class="table table-hover">
+    <thead>
+        <tr>
+            <th>SIR</th>
+            <th>Drug</th>
+            <th>Class</th>
+            <th>Susceptibility</th>
+            <th>Level</th>
+            <th>Score</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in records %}
+        <tr>
+            <td>{{ sir_badge(record.SIR) }}</td>
+            <td>{{ record.drug.capitalize() }}</td>
+            <td>{{ record.drug_class }}</td>
+            <td>{{ resistance_pill(record.SIR, record.text) }}</td>
+            <td>{{ record.level }}</td>
+            <td>{{ record.score }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{%- endmacro %}
+
+{% macro message_card(level, header, title, message, text_color='text-white') -%}
+{% if message|length > 300 %}
+  <div class="col-12">
+{% else %}
+  <div class="col-lg col-md col-sm-12 d-flex align-items-stretch">
+{% endif %}
+  <div class="card {{ text_color }} border-{{ level }} mb-3">
+    <div class="card-header bg-{{ level }}">{{ header }}</div>
+    <div class="card-body">
+      {% if title %}
+      <h5 class="text-black">{{ title }}</h5>
+      {% endif %}
+      <p class="card-text text-black">{{ message }}</p>
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro badge(level, message, text_color='text-white') -%}
+<span class="badge bg-{{ level }} {{ text_color }}">{{ message }}</span>
+{%- endmacro %}
+
+{% macro sir_badge(sir) -%}
+{% if sir=='S' %}
+    {{ badge('primary', sir) }}
+{% endif %}
+{% if sir=='I' %}
+    {{ badge('warning', sir, 'text-dark') }}
+{% endif %}
+{% if sir=='R' %}
+    {{ badge('danger', sir) }}
+{% endif %}
+{%- endmacro %}
+
+{% macro pill(level, message, text_color='text-white') -%}
+<span class="badge rounded-pill bg-{{ level }} {{ text_color }}">{{ message }}</span>
+{%- endmacro %}
+
+{% macro resistance_pill(sir, message) -%}
+{% if sir=='S' %}
+    {{ pill('primary', message) }}
+{% endif %}
+{% if sir=='I' %}
+    {{ pill('warning', message, 'text-dark') }}
+{% endif %}
+{% if sir=='R' %}
+    {{ pill('danger', message) }}
+{% endif %}
+{%- endmacro %}

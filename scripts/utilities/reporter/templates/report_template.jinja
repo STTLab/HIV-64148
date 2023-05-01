@@ -1,0 +1,49 @@
+{% from 'components.jinja' import generate_collapse, doughnut_plot_script with context %}
+{% from 'macros.jinja' import drug_resistant_table with context %}
+{% extends 'base_bootstrap.html' %}
+{% block body %}
+<div class="container-sm mt-5">
+    <h1>HIV-64148 Report</h1>
+    <h4>run id: {{ job_id }}</h4>
+    {% if worker.run_stats %}
+    <table class="table table-bordered">
+        <tbody>
+            <tr>
+            <th class="table-secondary">Wall clock time</th>
+            <td>{{ worker.run_stats.runtime }}</td>
+            </tr>
+            <tr>
+            <th class="table-secondary" colspan="2">Peak memory usage</th>
+            </tr>
+            <tr>
+            <td>Strainline</td>
+            <td>{{ worker.run_stats.peak_mem.strainline }} Mib</td>
+            </tr>
+            <tr>
+            <td>BLAST</td>
+            <td>{{worker.run_stats.peak_mem.blast}} Mib</td>
+            </tr>
+            <tr>
+            <td>Snippy</td>
+            <td>{{worker.run_stats.peak_mem.snippy}} Mib</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+    <h5>Reconstructed Haplotypes</h5>
+    <div class="row">
+        <div class="col-sm" style="max-width: 450px; max-height: 450px;">
+            <canvas id="haplotype-chart" width="852" height="852" style="display: block; box-sizing: border-box; height: 426px; width: 426px;"></canvas>
+        </div>
+        <div class="col-sm" style="max-width: 450px; max-height: 450px;">
+            <canvas id="subtype-chart" width="852" height="852" style="display: block; box-sizing: border-box; height: 426px; width: 426px;"></canvas>
+        </div>
+    </div>
+    {% for record in collapses -%}
+        {{ generate_collapse(record) }}
+    {%- endfor %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ doughnut_plot_script('haplotype-chart', 'Haplotype Abundance', hap_ids, hap_freq) }}
+{{ doughnut_plot_script('subtype-chart', 'Subtype composition', subtype_count['keys'], subtype_count['values']) }}
+{% endblock %}

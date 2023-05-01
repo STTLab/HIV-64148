@@ -1,0 +1,94 @@
+{% from 'macros.jinja' import blast_summary, blast_result, blast_table, drug_resistant_table, message_card with context %}
+{% macro generate_collapse(data) %}
+<div class="mt-2">
+  <button class="btn btn-light" style="width: 100%; text-align: left;" data-bs-toggle="collapse" data-bs-target="#{{ data.collapse_uuid }}" aria-expanded="false" aria-controls="{{ data.collapse_uuid }}">{{ data.name }}</button>
+  <div class="collapse" id="{{ data.collapse_uuid }}">
+    <div class="card card-body border-light">
+      {{ blast_summary(data.summary, data.sequence) }}
+      {{ blast_table(data.blast_result) }}
+      {{ drug_resistant_profile(data.drug_resistant_data) }}
+      {{ mutation_profile(data.mutations) }}
+    </div>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro mutation_profile(data) %}
+<h5>Mutation Profile</h5>
+<h6>Impressions</h6>
+<div class="row">
+  {% for record in data.validation_results %}
+    {% if record.level == 'OK' %}
+      {{ message_card('success', record.level, '', record.message) }}
+    {% elif record.level == 'NOTE' %}
+      {{ message_card('info', record.level, '', record.message, 'text-black') }}
+    {% elif record.level == 'WARNING' %}
+      {{ message_card('warning', record.level, '', record.message, 'text-black') }}
+    {% elif record.level == 'SEVERE_WARNING' or record.level == 'CRITICAL' %}
+      {{ message_card('danger', record.level, '', record.message) }}
+    {% endif %}
+  {% endfor %}
+</div>
+<div>
+  <h6>Sequence Alignments</h6>
+  {% for record in data.alignment %}
+  <table class="table table-bordered mt-4" style="width: 23%;">
+    <tr>
+      <th class="table table-secondary">Gene</th>
+      <td>{{ record.gene }}</td>
+    </tr>
+    <tr>
+      <th class="table table-secondary">%Match</th>
+      <td>{{'%0.3f'| format(record.match_pcnt|float) }}%</td>
+    </tr>
+  </table>
+  {% if record.align.mutation_data %}
+  <div class="row">
+    {% for mutation in record.align.mutation_data %}
+      {% if mutation.is_DRM %}
+        {% if mutation.is_Unusual %}
+          {{ message_card('danger', 'Unusual DRM', mutation.ID, '{}<br>{}'.format(mutation.message, mutation.comments)) }}
+        {% else %}
+          {{ message_card('danger', 'DRM', mutation.ID, '{}<br>{}'.format(mutation.message, mutation.comments)) }}
+        {% endif %}
+      {% elif mutation.is_Unusual %}
+        {{ message_card('warning', 'Unusual Mutation', mutation.ID, '{}<br>{}'.format(mutation.message, mutation.comments)) }}
+      {% elif mutation.is_Apobec %}
+        {{ message_card('secondary', 'APOBEC Mutation', mutation.ID, '{}<br>{}'.format(mutation.message, mutation.comments)) }}
+      {% elif mutation.comments %}
+        {{ message_card('info', 'Information', mutation.ID, '{}<br>{}'.format(mutation.message, mutation.comments)) }}
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+  <button class="btn btn-light" style="width: 100%; text-align: left;" data-bs-toggle="collapse" data-bs-target="#{{ record.align.uid }}" aria-expanded="false" aria-controls="{{ record.align.uid }}">Show alignment</button>
+  <div class="collapse" id="{{ record.align.uid }}">
+    <div id="haplotype-sequence-viewport" class="overflow-auto bg-light" style="max-width: 100%;">
+      {{ record.align.to_html()|safe }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro drug_resistant_profile(data) %}
+{{ drug_resistant_table(data) }}
+{% endmacro %}
+
+{% macro doughnut_plot_script(element_id, dataset_name, labels, frequencies) %}
+<script>{
+  const ctx = document.getElementById("{{ element_id }}");
+  new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: {{ labels }},
+      datasets: [{
+        labels: "{{ dataset_name }}",
+        data: {{ frequencies }},
+        borderWidth: 1
+      }]
+    },
+    options: { plugins: {legend: {position: "right"} } }
+  })
+};</script>
+{% endmacro %}
