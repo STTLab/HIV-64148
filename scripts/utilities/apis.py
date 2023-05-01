@@ -2,10 +2,14 @@
 import requests
 import pandas as pd
 from Bio import SeqIO
-from io import StringIO
 import multiprocessing
+from io import StringIO
+from uuid import uuid4
+from yattag.doc import Doc
+from yattag.indentation import indent
 from sierrapy import SierraClient
 from sierrapy.sierraclient import Sequence
+from functools import lru_cache
 from utilities.logger import logger
 from utilities.settings import secrets
 
@@ -100,7 +104,7 @@ class SequenceAnalysisResult(object):
         self.bestMatchingSubtype = data['bestMatchingSubtype']
         self.drugResistance = self.DrugResistantProfile(data['drugResistance'])
         self.mutations = self.MutationProfile(data['mutations'])
-        self.alignGeneSequences = [ self.AlignSequences(aln['gene']['name'], aln['matchPcnt'], aln['prettyPairwise']) for aln in data['alignedGeneSequences']]
+        self.alignGeneSequences = [ self.AlignSequences(aln['gene']['name'], aln['matchPcnt'], aln['prettyPairwise'], aln['mutations']) for aln in data['alignedGeneSequences']]
         self.validationResults = data['validationResults']
         return
 
@@ -141,10 +145,28 @@ class SequenceAnalysisResult(object):
                     'is_ApobecDRM': record['isApobecDRM'],
                     'is_Unusual': record['isUnusual'],
                     'has_Stop': record['hasStop'],
-                    'comments': record['comments'][0]['text'] if len(record['comments'])>0 else ''
+                    'comments': record['comments'][0]['text'] if len(record['comments'])>0 else '',
+                    'message': self._generate_message(
+                        record['reference'],
+                        record['position'],
+                        record['AAs'],
+                        record['isUnusual'],
+                        record['isApobecMutation']
+                    ),
                 }
                 results.append(data_dict)
             self.results = results
+
+        def _generate_message(self, ref, pos, alt, is_Unusual, is_Apobec):
+            if is_Unusual:
+                message = 'Unusual mutation'
+            else:
+                message = 'Mutation'
+            message += ' at AA position {}, from {} to {}'.format(pos, ref, alt)
+            if is_Apobec:
+                message += ' caused by APOBEC'
+            message += '.'
+            return message
 
         def to_dataframe(self):
             return pd.DataFrame(self.results)
@@ -153,14 +175,22 @@ class SequenceAnalysisResult(object):
             return self.to_dataframe().to_dict('records')
 
     class AlignSequences(object):
-        def __init__(self, gene, match_pcnt, align_data) -> None:
+        def __init__(self, gene, match_pcnt, align_data, mutations) -> None:
             self.gene = gene
             self.match_pcnt = match_pcnt
-            self.align = self.PrettyPairwise(align_data)
+            self.mutations = SequenceAnalysisResult.MutationProfile(mutations)
+            self.align = self.PrettyPairwise(align_data, self.mutations)
+
         class PrettyPairwise(object):
-            def __init__(self, prettyPairwise) -> None:
+            def __init__(self, prettyPairwise, mutation_data) -> None:
                 self.prettyPairwise = prettyPairwise
                 self.text = str(self)
+                self.mutation_data = mutation_data.to_list()
+                while True:
+                    uid = uuid4().hex
+                    if uid[0].isalpha():
+                        self.uid = uid
+                        break
 
             def __str__(self):
                 items = tuple(zip(
@@ -194,6 +224,59 @@ class SequenceAnalysisResult(object):
             def to_string(self):
                 return self.__str__()
 
+            def to_html(self):
+                mutation_iter = iter(self.mutation_data)
+                items = tuple(zip(
+                            self.prettyPairwise['positionLine'],
+                            self.prettyPairwise['refAALine'],
+                            self.prettyPairwise['alignedNAsLine'],
+                            self.prettyPairwise['mutationLine']
+                            )
+                        )
+                increment = 20
+                f = 0
+                t = f+increment
+                html = '<table class="table table-borderless" style="text-align: center;">\n'
+                html += '\t<tbody>\n'
+                while True:
+                    html += '\t\t<tr>\n'
+                    if f+1 == 1:
+                        html += '\t\t\t<td style="text-align: right;">'
+                        html += 'REFAA<br>ALNNA<br>MUTAA'
+                    else:
+                        html += '\t\t\t<td>\n'
+                        html += f'\t\t\t\t<br>{str(f+1)}'
+                    html += '\t\t\t</td>'
+                    for pos, ref, align, mutation in items[f:t]:
+                        if mutation.strip() == '-':
+                            html += '\t\t\t<td>\n'
+                        else:
+                            mut_record = next(mutation_iter, None)
+                            if mut_record:
+                                if mut_record['is_DRM'] or mut_record['is_ApobecDRM']:
+                                    html+= '\t\t\t<td style="background-color: var(--bs-danger-bg-subtle)">\n'
+                                elif mut_record['is_Apobec'] or mut_record['is_Unusual']:
+                                    html+= '\t\t\t<td style="background-color: var(--bs-warning-bg-subtle)">\n'
+                                elif mut_record['comments'] != '':
+                                    html+= '\t\t\t<td style="background-color: var(--bs-info-bg-subtle)">\n'
+                                else:
+                                    html+= '\t\t\t<td style="background-color: var(--bs-primary-bg-subtle)">\n'
+                            else:
+                                html += '\t\t\t<td style="background-color: var(--bs-secondary-bg-subtle)">\n'
+                        html += f'\t\t\t\t{ref.strip()}<br>\n'
+                        html += f'\t\t\t\t{align.strip()}<br>\n'
+                        html += f'\t\t\t\t{mutation.strip()}\n'
+                        html += '\t\t\t</td>\n'
+                    html += '\t\t</tr>\n'
+                    f=t
+                    t+=increment
+                    if t > len(items):
+                        t = len(items)
+                    if f>=len(items):
+                        break
+                html += '\t</tbody>'
+                html += '</table>'
+                return html
 
 def _test():
     accession_list = [

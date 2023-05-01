@@ -28,7 +28,7 @@ drugResistance (includeGenes: [CA, PR, RT, IN]) {
 }
 # Mutations
 validationResults(includeGenes: [CA, PR, RT, IN]) {
-  level
+  level,
   message
 },
 alignedGeneSequences {
@@ -39,10 +39,28 @@ alignedGeneSequences {
     refAALine,
     alignedNAsLine,
     mutationLine
-  }
-}
+  },
+  mutations{
+    text,
+    gene { name },
+    reference,
+    position,
+    AAs,
+    triplet,
+    primaryType,
+    isDeletion,
+    isInsertion,
+    isIndel,
+    isDRM,
+    isApobecMutation,
+    isApobecDRM,
+    isUnusual,
+    hasStop,
+    comments {name,type,text}
+  },
+},
 mutations{
-  text
+  text,
   gene { name },
   reference,
   position,
