@@ -8,6 +8,7 @@ import subprocess
 import pandas as pd
 from Bio import SeqIO
 from pathlib import Path
+from functools import lru_cache
 
 from utilities.apis import EutilsNCBI
 from multiprocessing import cpu_count
@@ -34,7 +35,7 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
             cmd.append(val)
     cmd.append(f'--{input_type}')
     cmd.append(input_file)
-    
+
     process = subprocess.run(cmd)
     return process.returncode
 
@@ -119,7 +120,7 @@ class BLAST:
         if stderr:
             logger.warn(stderr.decode())
         return process.returncode
-    
+
     @classmethod
     def accession_to_db(cls, dbtitle: str, accession_list: list[str] | tuple[str], dbtype: str) -> None:
         '''
@@ -169,16 +170,17 @@ class BLAST:
             }
         }
     @classmethod
+    @lru_cache(maxsize=100)
     def get_subtypes(cls, dbtitle, accession):
         iden_seq = FASTA.read_and_extract(f'{cls.db_path}/{dbtitle}', accession)
         subtype_regex = re.compile(r'CRF[0-9]{2}_[A-Z]{2}|subtype_[A,B,C,D,F1,F2,G]')
         subtype = subtype_regex.findall(iden_seq.description)[0]                            # pyright: reportGeneralTypeIssues=false
         return subtype
-    
+
     class BLASTResult(object):
         def __init__(self, data: pd.DataFrame) -> None:
             self.data = data
-        
+
         @classmethod
         def read(cls, file: str):
             '''
@@ -194,7 +196,7 @@ class BLAST:
             ]
             data = pd.read_csv(file, delimiter=delim, header=None, names=col_names)
             return BLAST.BLASTResult(data)
-        
+
         def get_top(self, n):
             df = self.data.copy()
             # sort by bitscore, grouped by `qseqid` and get top `n` records from each group.
