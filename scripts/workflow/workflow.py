@@ -81,8 +81,8 @@ class Worker(object):
                 input_fastq=f'{_tmpdir}/raw_reads.fastq',
                 output_dir=_tmpdir
             )
-            logger.debug(f'Moving Strainline output to {self.output_dir}')
-            [shutil.move(file, self.output_dir) for file in glob.glob(f'{_tmpdir}/*')]
+            logger.info(f'Moving Strainline output to {self.output_dir}')
+            [ shutil.move(file, self.output_dir) for file in glob.glob(f'{_tmpdir}/*') ]
             logger.info('Finished - Strainline')
 
         # Log memory

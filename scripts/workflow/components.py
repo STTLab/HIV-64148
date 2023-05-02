@@ -16,7 +16,7 @@ from utilities.settings import settings
 from utilities.logger import logger
 from utilities.file_handler import FASTA
 
-THREADS = str(cpu_count())
+THREADS = str(cpu_count()-1)
 
 def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     if input_type not in ['fastq', 'fasta', 'fastq_rich', 'fastq_minimal', 'summary', 'bam', 'ubam', 'cram']: raise Exception('Format Error.')
@@ -42,6 +42,7 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
 def strainline(
         input_fastq,
         output_dir,
+        clean_up = True,
         platform:str = 'ont',
         mintrimlen:int = 1000,
         topk:int = 50,
@@ -80,6 +81,26 @@ def strainline(
         '--threads', str(threads)
     ]
     process = subprocess.run(cmd)
+    if clean_up:
+        logger.info('Removing intermediate files.')
+        to_remove = [
+            'iter*',
+            '*reads*',
+            'corrected*.fa',
+            'tmp',
+            'haplotypes.fa',
+            'haplotypes.final.fa',
+            'haplotypes.rm_misassembly.fa',
+            'contig_list.txt'
+        ]
+        for things in to_remove:
+            for item in glob.glob(f'{output_dir}/{things}'):
+                shutil.rmtree(item)
+                logger.debug(f'{item}...Removed')
+        for file in ['haplotypes.final.fa', 'haps.bam', 'haps.depth']:
+            shutil.move(f'{output_dir}/filter_by_abun/{file}', output_dir)
+        shutil.rmtree(f'{output_dir}/filter_by_abun')
+
     return process.returncode
 
 class BLAST:
