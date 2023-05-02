@@ -43,7 +43,7 @@ def context_builder(haplotype_fa, nanoplot_html: str|None=None, worker_info: dic
         'job_id': worker_info['job_id'],
         'worker': worker_info,
         'nanoplot_html': nanoplot_html,
-        'collapses': collapse_context_builder(haplotypes, worker_info['blast_result'], hivdb_result),
+        'collapses': collapse_context_builder(haplotypes, worker_info['run_stats']['blast_result'], hivdb_result),
         'hap_ids': [seq.id for seq in haplotypes],
         'hap_freq': [seq.description.split()[2].replace('freq=','') for seq in haplotypes],
     }

@@ -126,7 +126,7 @@ class Simulation(object):
         self.dataset = ''
 
     @classmethod
-    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, blinded=False, perfect=True):
+    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, perfect=True):
 
         # Random simulation mode
         cls.mode = 'metagenome' # np.random.choice(('genome', 'metagenome'), 1)[0]
