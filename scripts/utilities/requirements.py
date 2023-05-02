@@ -1,6 +1,7 @@
 
 import glob
 import os, sys
+import requests
 import subprocess
 from pathlib import Path
 from workflow.components import BLAST
@@ -73,26 +74,22 @@ def check_requirements(repair: bool=False):
             setup_workflow()
 
 def setup_workflow():
-    [ os.symlink(file, '/usr/local/bin', target_is_directory=True) for file in glob.glob('/opt/Strainline/src/*')]
+    for file in glob.glob('/opt/Strainline/src/*'):
+        try:
+            os.symlink(file, '/usr/local/bin', target_is_directory=True)
+        except FileExistsError:
+            pass
     rep_ids: dict = settings['data']['variant_calling']['rep_ids']
     rep_fasta = settings['data']['variant_calling']['rep_fasta']
     if not os.path.exists(rep_fasta):
         logger.info('Retrieving representative sequences for each HIV-1 subtype.')
-        os.makedirs(Path(rep_fasta).parent)
-    EutilsNCBI.fetch_fasta_parallel(list(rep_ids.values()), save_to=rep_fasta)
-
-    logger.info('Creating BLAST database of 32 selected HIV-1 sequences.')
-
-    BLAST.accession_to_db(
-        '32hiv1_default_db',
-        [
-            'AF164485.1', 'AF259954.1', 'AF259955.1', 'KU168309.1', 'U51189.1',
-            'AB049811.1', 'AB231895.1', 'KC492737', 'KC492738', 'KC503852',
-            'KC503853', 'KC503854', 'KC503855', 'KF234628', 'AF385934',
-            'AF385935', 'AF385936', 'AB703607.1', 'EF158040.1', 'AF324493.2',
-            'MH705157.1', 'AY835759.1', 'K03455.1', 'X01762.1', 'AY772699.1',
-            'AB485648.1', 'AJ320484.1', 'KY392769.1', 'AB231893.1', 'AB485662.1',
-            'AF084936.1', 'MH705134.1'
-        ],
-        'nucl'
-    )
+        try: os.makedirs(Path(rep_fasta).parent)
+        except FileExistsError: pass
+    # for subtype, rep_ids in rep_ids.items():
+    EutilsNCBI.fetch_fasta_parallel(rep_ids.values(), save_to=rep_fasta)
+    logger.info('Downloading LosAlamos HIV-1 sequences.')
+    response = requests.get('https://storage.googleapis.com/open-to-plublic/hiv_db_LosAlamos_FullGenome_utf8.fasta', allow_redirects=True)
+    with open(f"{settings['data']['blast']['db_dir']}/{settings['data']['blast']['dbtitle']}", 'wb') as file:
+        file.write(response.content)
+    logger.info('Creating database...')
+    BLAST.create_db(settings['data']['blast']['dbtitle'], f"{settings['data']['blast']['db_dir']}/{settings['data']['blast']['dbtitle']}", 'nucl')
