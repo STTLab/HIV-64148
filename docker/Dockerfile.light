@@ -12,9 +12,6 @@ RUN apt-get install -y python3-pip python-is-python3
 # Install Git
 RUN apt-get install -y git
 
-# Install samtools
-RUN apt-get install -y samtools
-
 # Install mamba
 WORKDIR /micromamba
 RUN apt-get install -y curl
@@ -35,7 +32,7 @@ WORKDIR /opt
 RUN ["wget", "https://github.com/gt1/daccord/releases/download/0.0.10-release-20170526170720/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
 RUN ["tar", "-zvxf", "daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
 RUN ["rm", "daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
-RUN ["ln", "-fs", "/opt/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu/bin/daccord", "/usr/local/bin/daccord"]
+RUN ["ln", "-fs", "/opt/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu/bin/daccord", "/micromamba/bin/envs/venv/bin/daccord"]
 
 # Install Snippy
 RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "snippy==4.6.0"]
@@ -53,7 +50,7 @@ RUN ["pip", "install", "yattag", "sierrapy", "jinja2"]
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
 
-RUN ["ln", "-fs", "/opt/Strainline/src/*", "/micromamba/bin/envs/venv/bin/"]
+RUN ["ln", "-fs", "/opt/Strainline/src/*", "/micromamba/bin/envs/venv/bin"]
 
 WORKDIR /workspace
 CMD ["/bin/bash"]
