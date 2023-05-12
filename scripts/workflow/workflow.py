@@ -19,12 +19,13 @@ from utilities.reporter import report_randerer, context_builder
 
 class Worker(object):
 
-    def __init__(self, handler=None) -> None:
+    def __init__(self, handler=None, additionals=None) -> None:
         self.handler = handler
         self._stat = {
             't_created': time.time(),
             'peak_mem': {}
         }
+        self.additionals = additionals
 
     def get_peak_mem(self) -> dict:
         return self._stat.get('peak_mem', {})
@@ -134,17 +135,35 @@ class Worker(object):
         hivdb_result = hivdb_seq_analysis(seqs, gql)
 
         logger.info('Generating report')
-        report_ctx = context_builder.context_builder(
-            haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
-            nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
-            worker_info={
-                'job_id': self.job_id,
-                'run_stats':{
-                    'runtime': self.get_runtime(),
-                    'blast_result': blast['output']['blast_result'],
-                    'peak_mem': self.get_peak_mem()
-                }
-            },
-            hivdb_result=hivdb_result
-        )
+        match self.handler:
+            case 'Simulator':
+                report_ctx = context_builder.context_builder(
+                    haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
+                    nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
+                    worker_info={
+                        'job_id': self.job_id,
+                        'run_stats':{
+                            'runtime': self.get_runtime(),
+                            'blast_result': blast['output']['blast_result'],
+                            'peak_mem': self.get_peak_mem()
+                        }
+                    },
+                    hivdb_result=hivdb_result,
+                    simulation_data=self.additionals
+                )
+            case _:
+                report_ctx = context_builder.context_builder(
+                    haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
+                    nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
+                    worker_info={
+                        'job_id': self.job_id,
+                        'run_stats':{
+                            'runtime': self.get_runtime(),
+                            'blast_result': blast['output']['blast_result'],
+                            'peak_mem': self.get_peak_mem()
+                        }
+                    },
+                    hivdb_result=hivdb_result
+                )
+
         report_randerer.render_report(report_ctx, f'{self.output_dir}/hiv-64148_report.html')

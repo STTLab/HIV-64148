@@ -5,6 +5,9 @@
 <div class="container-sm mt-5">
     <h1>HIV-64148 Report</h1>
     <h4>run id: {{ job_id }}</h4>
+    {% if is_simulated %}
+        <small>This analysis is based on a simulated data</small>
+    {% endif %}
     {% if worker.run_stats %}
     <table class="table table-bordered">
         <tbody>
@@ -21,11 +24,11 @@
             </tr>
             <tr>
             <td>BLAST</td>
-            <td>{{worker.run_stats.peak_mem.blast}} Mib</td>
+            <td>{{ worker.run_stats.peak_mem.blast }} Mib</td>
             </tr>
             <tr>
             <td>Snippy</td>
-            <td>{{worker.run_stats.peak_mem.snippy}} Mib</td>
+            <td>{{ worker.run_stats.peak_mem.snippy }} Mib</td>
             </tr>
         </tbody>
     </table>
@@ -39,12 +42,22 @@
         <div class="col-sm" style="max-width: 450px; max-height: 450px;">
             <canvas id="subtype-chart" width="852" height="852" style="display: block; box-sizing: border-box; height: 426px; width: 426px;"></canvas>
         </div>
+        {% if is_simulated %}
+        <div class="col-sm" style="max-width: 450px; max-height: 450px;">
+            <h5>Simulated subtype</h5>
+            <canvas id="original-subtype-chart" width="852" height="852" style="display: block; box-sizing: border-box; height: 426px; width: 426px;"></canvas>
+        </div>
+        {% endif %}
     </div>
     {% for record in collapses -%}
         {{ generate_collapse(record) }}
     {%- endfor %}
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <small>This analysis is based on a simulated data</small>
 {{ doughnut_plot_script('haplotype-chart', 'Haplotype Abundance', hap_ids, hap_freq) }}
 {{ doughnut_plot_script('subtype-chart', 'Subtype composition', subtype_count['keys'], subtype_count['values']) }}
+{% if is_simulated %}
+{{ doughnut_plot_script('original-subtype-chart', 'Original Subtype composition', original_subtype_count['keys'], original_subtype_count['values']) }}
+{% endif %}
 {% endblock %}

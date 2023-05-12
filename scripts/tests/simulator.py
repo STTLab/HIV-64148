@@ -132,6 +132,7 @@ class Simulation(object):
         fasta = FASTA.read(path_to_fasta)
         errors = []
         for sim in pd.unique(selected['simulation_no']):
+            output_dir += f'/{sim}'
             logger.info(f'Start simulation: {sim}')
             selected_seq = selected.loc(selected['simulation_no'] == sim).reset_index(drop=True)
             with TemporaryDirectory() as _temp:
@@ -168,7 +169,8 @@ class Simulation(object):
                     for file in glob.glob(f'{output_dir}/*.fastq'):
                         reads = open(file, 'r').read()
                         all_reads.write(reads)
-            worker = Worker()
+            subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
+            worker = Worker('Simulator', {'subtype_count': subtype_count})
             job = worker.assign_job(f'{output_dir}/data/simulated_all_reads.fastq', f'{output_dir}/pipeline_output', True)
             logger.info(f'Job created (id:{job})')
             try:
