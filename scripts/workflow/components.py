@@ -95,11 +95,15 @@ def strainline(
         ]
         for things in to_remove:
             for item in glob.glob(f'{output_dir}/{things}'):
-                shutil.rmtree(item)
+                if os.path.isdir(item):
+                    shutil.rmtree(item)
+                else:
+                    os.remove(item)
                 logger.debug(f'{item}...Removed')
         for file in ['haplotypes.final.fa', 'haps.bam', 'haps.depth']:
             shutil.move(f'{output_dir}/filter_by_abun/{file}', output_dir)
         shutil.rmtree(f'{output_dir}/filter_by_abun')
+        
 
     return process.returncode
 
@@ -125,6 +129,7 @@ class BLAST:
         if dbtype not in ('nucl', 'prot'):
             raise ValueError('Only "nucl" or "prot" is allowed. Plese refers to BLAST documentation.')
         if not os.path.exists(cls.db_path): os.makedirs(cls.db_path)
+        os.chdir(cls.db_path)
         cmd = [
             *settings['softwares']['blast']['makedb'].split(),
             '-title', dbtitle,

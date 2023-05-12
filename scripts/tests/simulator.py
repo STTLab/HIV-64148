@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
+from workflow.workflow import Worker
 
 class Simulator(object):
     pre_trained_dir = './tests/pre-trained_models'
@@ -126,8 +127,66 @@ class Simulation(object):
         self.dataset = ''
 
     @classmethod
-    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, blinded=False, perfect=True):
+    def test_from_csv(cls, path_to_input, output_dir, path_to_fasta, perfect=True):
+        selected = pd.read_csv(path_to_input)
+        fasta = FASTA.read(path_to_fasta)
+        errors = []
+        for sim in pd.unique(selected['simulation_no']):
+            output_dir += f'/{sim}'
+            logger.info(f'Start simulation: {sim}')
+            selected_seq = selected.loc(selected['simulation_no'] == sim).reset_index(drop=True)
+            with TemporaryDirectory() as _temp:
+                seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
+                abundances = [20, 20, 20, 20, 20]
+                to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
+                # Start simulation
+                try:
+                    Simulator.simulate_metagenome(
+                        inputs=to_simulate,
+                        num_reads=20000,
+                        model_prefix=settings['data']['nanosim']['model'],
+                        run_dir=_temp, perfect=perfect
+                    )
+                except Exception as error:
+                    errors.append({
+                        'job-id': '-',
+                        'process': 'Simulator.simulate_metagenome',
+                        'sample': selected_seq['ID'].values,
+                        'message': error
+                    })
+                    continue
+                # Clean up
+                if os.path.exists(output_dir):
+                    shutil.rmtree(output_dir)
+                os.makedirs(output_dir)
+                selected.to_csv(f'{output_dir}/pre-simulation-seq.tsv', sep='\t')
+                keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
+                for file in keep:
+                    if os.path.exists(f'{output_dir}/{Path(file).name}'):
+                        os.remove(f'{output_dir}/{Path(file).name}')
+                    shutil.move(file, f'{output_dir}')
+                with open(f'{output_dir}/simulated_all_reads.fastq', 'w') as all_reads:
+                    for file in glob.glob(f'{output_dir}/*.fastq'):
+                        reads = open(file, 'r').read()
+                        all_reads.write(reads)
+            subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
+            worker = Worker('Simulator', {'subtype_count': subtype_count})
+            job = worker.assign_job(f'{output_dir}/data/simulated_all_reads.fastq', f'{output_dir}/pipeline_output', True)
+            logger.info(f'Job created (id:{job})')
+            try:
+                worker.run_workflow()
+            except Exception as error:
+                errors.append({
+                    'job-id': job,
+                    'process': 'HIV-64148',
+                    'sample': selected_seq['ID'].values,
+                    'message': error
+                })
+        if len(errors) > 0:
+            pd.DataFrame(errors).to_csv(f'{output_dir}/errors.csv')
 
+    @classmethod
+    def test_random(cls, path_to_metadata, output_dir, path_to_fasta:str|None=None, prob=None, perfect=True):
         # Random simulation mode
         cls.mode = 'metagenome' # np.random.choice(('genome', 'metagenome'), 1)[0]
 
@@ -135,7 +194,7 @@ class Simulation(object):
             delim = '\t'
         else:
             delim = ','
-        df = pd.read_csv(path_to_metadata, sep=delim, )
+        df = pd.read_csv(path_to_metadata, sep=delim)
 
         # Random number of genomes to include in the simulation
         if cls.mode == 'genome':

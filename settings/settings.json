@@ -40,7 +40,7 @@
     "data": {
         "blast": {
             "db_dir": "../data/blast/db",
-            "dbtitle": "LosAlmos_db"
+            "dbtitle": "LosAlamos_db"
         },
         "variant_calling": {
             "rep_fasta": "../data/representatives.fasta",

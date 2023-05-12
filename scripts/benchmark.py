@@ -34,5 +34,14 @@ def main():
             logger.info(f'Job created (id:{job})')
             worker.run_workflow()
 
+        case 'simulate_file':
+            Simulation.test_from_csv(
+                path_to_input=args.metadata,
+                output_dir=f'{args.output_dir}/data',
+                path_to_fasta=args.references,
+                perfect=args.perfect
+            )
+
+
 if __name__ == '__main__':
     main()

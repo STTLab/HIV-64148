@@ -26,7 +26,7 @@ class EutilsNCBI:
         pass
 
     @classmethod
-    def fetch_fasta(cls, accession, save_to=None):
+    def fetch_fasta(cls, accession, save_to=None, subtype=None):
         params = {
             'db': 'nucleotide',
             'id': accession,
@@ -36,21 +36,24 @@ class EutilsNCBI:
         if cls.API_KEY != '____YOUR_KEY____': params['api_key'] = cls.API_KEY
         logger.debug(f'Fetching sequence {accession}')
         res = requests.get(f'{cls.END_POINT}/efetch.fcgi', params=params)
-        try:
-            seq = SeqIO.read(StringIO(res.content.decode()), 'fasta')
-            summary: dict = cls.fetch_summery(accession)
-            info = dict(zip(summary.get("subtype","").split('|'), summary.get("subname","").split("|")))
-            if 'subtype' in info.keys():
-                subtype = 'subtype_' + info['subtype']
-            else: subtype = 'subtype_' + hivdb_seq_analysis(
-                                Sequence(header=seq.id, sequence=str(seq.seq)),
-                                'inputSequence { header, SHA512 }, strain { name }, \
-                                bestMatchingSubtype { displayWithoutDistance, distance }'
-                            )[0]['bestMatchingSubtype']['displayWithoutDistance']
-
-            seq.description = f'{subtype}; {summary.get("title", "")}'
-        except Exception as e:
-            raise e
+        seq = SeqIO.read(StringIO(res.content.decode()), 'fasta')
+        if subtype is None:
+            try:
+                summary: dict = cls.fetch_summery(accession)
+                info = dict(zip(summary.get("subtype","").split('|'), summary.get("subname","").split("|")))
+                if 'subtype' in info.keys():
+                    subtype = 'subtype_' + info['subtype']
+                else:
+                    response = SierraClient().sequence_analysis([Sequence(header=seq.id, sequence=str(seq.seq))],
+                                    'inputSequence { header, SHA512 }, strain { name }, \
+                                    bestMatchingSubtype { displayWithoutDistance, distance }'
+                                )
+                    subtype = response[0]['bestMatchingSubtype']['displayWithoutDistance']
+                seq.description = f'{subtype}; {summary.get("title", "")}'
+            except Exception as e:
+                raise e
+        else:
+            seq.description = f'{subtype}'
         if save_to:
             SeqIO.write(seq, save_to, 'fasta')
             return

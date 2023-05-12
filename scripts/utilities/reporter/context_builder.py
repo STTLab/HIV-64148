@@ -37,13 +37,13 @@ def collapse_context_builder(haplotypes, blast_result_csv, hivdb_result=None):
         all_context.append(context)
     return all_context
 
-def context_builder(haplotype_fa, nanoplot_html: str|None=None, worker_info: dict={}, hivdb_result=None):
+def context_builder(haplotype_fa, nanoplot_html: str|None=None, worker_info: dict={}, hivdb_result=None, simulation_data=None):
     haplotypes = tuple(SeqIO.parse(haplotype_fa, 'fasta'))
     context = {
         'job_id': worker_info['job_id'],
         'worker': worker_info,
         'nanoplot_html': nanoplot_html,
-        'collapses': collapse_context_builder(haplotypes, worker_info['blast_result'], hivdb_result),
+        'collapses': collapse_context_builder(haplotypes, worker_info['run_stats']['blast_result'], hivdb_result),
         'hap_ids': [seq.id for seq in haplotypes],
         'hap_freq': [seq.description.split()[2].replace('freq=','') for seq in haplotypes],
     }
@@ -59,4 +59,10 @@ def context_builder(haplotype_fa, nanoplot_html: str|None=None, worker_info: dic
         'keys': list(subtype_count.keys()),
         'values': list(subtype_count.values())
     }
+    if simulation_data:
+        context['is_simulated'] = True
+        context['original_subtype_count'] = {
+            'keys': list(simulation_data['subtype_count'].keys()),
+            'values': list(simulation_data['subtype_count'].values())
+        }
     return context
