@@ -12,6 +12,7 @@ RUN apt-get install -y libcurl4-openssl-dev
 RUN apt-get install -y wget
 RUN apt-get install -y unzip
 RUN apt-get install -y nano
+RUN apt-get install -y tabix
 RUN apt-get install -y python3-pip python-is-python3
 
 # Install Git
@@ -69,8 +70,6 @@ RUN make install -C DALIGNER DEST_DIR=/usr/local/bin
 # Install Strainline
 WORKDIR /opt
 RUN ["git", "clone", "https://github.com/HaploKit/Strainline.git"]
-RUN ["ln", "-fs", "/opt/Strainline/src/*", "/usr/local/bin/"]
-
 
 ENV MAMBA_ROOT_PREFIX="/micromamba/bin/"
 ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}"
@@ -90,8 +89,9 @@ RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y", "snpeff==4.5
 # Install BLAST+
 RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y","blast"]
 
-# Install Canu and Medaka
-# RUN ["micromamba ", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "canu", "medaka"]
+# Install NanoPlot
+RUN ["micromamba", "create", "-n", "nanoplot", "-c", "bioconda", "-c", "conda-forge", "-y", "nanoplot"]
+
 RUN ["micromamba", "clean", "--all", "-y"]
 
 RUN ["pip","install", "biopython", "pandas", "numpy"]
@@ -101,6 +101,8 @@ RUN apt-get remove -y build-essential
 
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
+
+RUN ["ln", "-fs", "/opt/Strainline/src/*", "/usr/local/bin/"]
 
 WORKDIR /workspace
 CMD ["/bin/bash"]
