@@ -48,7 +48,7 @@ def context_builder(haplotype_fa, nanoplot_html: str|None=None, worker_info: dic
         'hap_freq': [seq.description.split()[2].replace('freq=','') for seq in haplotypes],
     }
     subtype_count = {}
-    blast_result = BLAST.BLASTResult.read(worker_info['blast_result'])
+    blast_result = BLAST.BLASTResult.read(worker_info['run_stats']['blast_result'])
     blast_top_iden = blast_result.get_top(1)['sseqid'].to_numpy()
     for iden in blast_top_iden:
         subtype = BLAST.get_subtypes(settings['data']['blast']['dbtitle'], iden)

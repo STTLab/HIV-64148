@@ -37,7 +37,7 @@ def main():
         case 'simulate_file':
             Simulation.test_from_csv(
                 path_to_input=args.metadata,
-                output_dir=f'{args.output_dir}/data',
+                output_dir=args.output_dir,
                 path_to_fasta=args.references,
                 perfect=args.perfect
             )

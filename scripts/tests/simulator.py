@@ -132,9 +132,9 @@ class Simulation(object):
         fasta = FASTA.read(path_to_fasta)
         errors = []
         for sim in pd.unique(selected['simulation_no']):
-            output_dir += f'/{sim}'
+            this_output_dir = f'{output_dir}/{sim}'
             logger.info(f'Start simulation: {sim}')
-            selected_seq = selected.loc(selected['simulation_no'] == sim).reset_index(drop=True)
+            selected_seq = selected.loc[selected['simulation_no'] == sim].reset_index(drop=True)
             with TemporaryDirectory() as _temp:
                 seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
                 abundances = [20, 20, 20, 20, 20]
@@ -156,22 +156,22 @@ class Simulation(object):
                     })
                     continue
                 # Clean up
-                if os.path.exists(output_dir):
-                    shutil.rmtree(output_dir)
-                os.makedirs(output_dir)
-                selected.to_csv(f'{output_dir}/pre-simulation-seq.tsv', sep='\t')
+                if os.path.exists(this_output_dir):
+                    shutil.rmtree(this_output_dir)
+                os.makedirs(this_output_dir)
+                selected.to_csv(f'{this_output_dir}/pre-simulation-seq.tsv', sep='\t')
                 keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
                 for file in keep:
-                    if os.path.exists(f'{output_dir}/{Path(file).name}'):
-                        os.remove(f'{output_dir}/{Path(file).name}')
-                    shutil.move(file, f'{output_dir}')
-                with open(f'{output_dir}/simulated_all_reads.fastq', 'w') as all_reads:
-                    for file in glob.glob(f'{output_dir}/*.fastq'):
+                    if os.path.exists(f'{this_output_dir}/{Path(file).name}'):
+                        os.remove(f'{this_output_dir}/{Path(file).name}')
+                    shutil.move(file, f'{this_output_dir}')
+                with open(f'{this_output_dir}/simulated_all_reads.fastq', 'w') as all_reads:
+                    for file in glob.glob(f'{this_output_dir}/*.fastq'):
                         reads = open(file, 'r').read()
                         all_reads.write(reads)
             subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
             worker = Worker('Simulator', {'subtype_count': subtype_count})
-            job = worker.assign_job(f'{output_dir}/data/simulated_all_reads.fastq', f'{output_dir}/pipeline_output', True)
+            job = worker.assign_job(f'{this_output_dir}/data/simulated_all_reads.fastq', f'{this_output_dir}/pipeline_output', True)
             logger.info(f'Job created (id:{job})')
             try:
                 worker.run_workflow()

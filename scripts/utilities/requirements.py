@@ -89,6 +89,7 @@ def setup_workflow():
     EutilsNCBI.fetch_fasta_parallel(rep_ids.values(), save_to=rep_fasta)
     logger.info('Downloading LosAlamos HIV-1 sequences.')
     response = requests.get('https://storage.googleapis.com/open-to-plublic/hiv_db_LosAlamos_FullGenome_utf8.fasta', allow_redirects=True)
+    os.makedirs(settings['data']['blast']['db_dir'], exist_ok=True)
     with open(f"{settings['data']['blast']['db_dir']}/{settings['data']['blast']['dbtitle']}", 'wb') as file:
         file.write(response.content)
     logger.info('Creating database...')
