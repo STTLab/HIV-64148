@@ -3,8 +3,8 @@ from jinja2 import Environment, select_autoescape, FileSystemLoader
 
 def render_report(context, save_to=None):
     env = Environment(
-        loader=FileSystemLoader(searchpath='./templates'),
-        autoescape=select_autoescape(enabled_extensions='html')
+        loader=FileSystemLoader(searchpath='./utilities/reporter/templates'),
+        autoescape=select_autoescape()
     )
     template = env.get_template('report_template.jinja')
     if save_to:
