@@ -95,7 +95,7 @@ RUN ["micromamba", "create", "-n", "nanoplot", "-c", "bioconda", "-c", "conda-fo
 RUN ["micromamba", "clean", "--all", "-y"]
 
 RUN ["pip","install", "biopython", "pandas", "numpy"]
-RUN ["pip", "install", "yattag", "sierrapy"]
+RUN ["pip", "install", "yattag", "sierrapy", "jinja2"]
 
 RUN apt-get remove -y build-essential
 
