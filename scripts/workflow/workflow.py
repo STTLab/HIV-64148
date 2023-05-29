@@ -16,11 +16,13 @@ from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
+from tests.alternative_tools import rvhaplo, reformat_rvhaplo
 
 class Worker(object):
 
-    def __init__(self, handler=None, additionals=None) -> None:
+    def __init__(self, handler=None, additionals=None, reconstructor='strainline') -> None:
         self.handler = handler
+        self.reconstructor = reconstructor
         self._stat = {
             't_created': time.time(),
             'peak_mem': {}
@@ -76,19 +78,25 @@ class Worker(object):
         self.run_qc(self._input_fastq, f'{self.output_dir}/qc')
 
         # Strainline
-        with TemporaryDirectory() as _tmpdir:
-            os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
-            strainline(
-                input_fastq=f'{_tmpdir}/raw_reads.fastq',
-                output_dir=_tmpdir
-            )
-            logger.info(f'Moving Strainline output to {self.output_dir}')
-            [ shutil.move(file, self.output_dir) for file in glob.glob(f'{_tmpdir}/*') ]
-            logger.info('Finished - Strainline')
+        match self.reconstructor:
+            case 'rvhaplo':
+                rvhaplo(self._input_fastq, '/hiv64148/data/K03455.fasta', f'{self.output_dir}/rvhaplo')
+                reformat_rvhaplo(f'{self.output_dir}/rvhaplo/rvhaplo/rvhaplo_consensus.fasta', f'{self.output_dir}/haplotypes.final.fa')
+                logger.info('Finished - RVHaplo')
+            case _:
+                with TemporaryDirectory() as _tmpdir:
+                    os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
+                    strainline(
+                        input_fastq=f'{_tmpdir}/raw_reads.fastq',
+                        output_dir=_tmpdir
+                    )
+                    logger.info(f'Moving Strainline output to {self.output_dir}')
+                    [ shutil.move(file, self.output_dir) for file in glob.glob(f'{_tmpdir}/*') ]
+                    logger.info('Finished - Strainline')
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['strainline'] = round(_peak/(1024^2),3) # Memory Mib
+        self._stat['peak_mem'][self.reconstructor] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
 
         # BLAST
@@ -158,6 +166,7 @@ class Worker(object):
                     worker_info={
                         'job_id': self.job_id,
                         'run_stats':{
+                            'reconstructor': self.reconstructor,
                             'runtime': self.get_runtime(),
                             'blast_result': blast['output']['blast_result'],
                             'peak_mem': self.get_peak_mem()
