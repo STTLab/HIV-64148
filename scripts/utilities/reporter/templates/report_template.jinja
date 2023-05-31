@@ -19,8 +19,13 @@
             <th class="table-secondary" colspan="2">Peak memory usage</th>
             </tr>
             <tr>
+            {% if worker.run_stats.reconstructor == 'strainline'%}
             <td>Strainline</td>
             <td>{{ worker.run_stats.peak_mem.strainline }} Mib</td>
+            {% elif worker.run_stats.reconstructor == 'rvhaplo'%}
+            <td>RVHaplo</td>
+            <td>{{ worker.run_stats.peak_mem.rvhaplo }} Mib</td>
+            {% endif %}
             </tr>
             <tr>
             <td>BLAST</td>

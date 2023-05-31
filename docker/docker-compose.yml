@@ -17,3 +17,8 @@ services:
       - shared-volume:/workspace
 volumes:
      shared-volume:
+        driver: local
+        driver_opts:
+          type: none
+          o: bind
+          device: /home/$USER/sas/$USER/webserver/docker_shared-volume/_data

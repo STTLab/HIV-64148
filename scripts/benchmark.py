@@ -15,6 +15,8 @@ def main():
     )
     parser.add_argument('-refs', '--references', type=str, required=True, help='Multi-fasta file')
     parser.add_argument('-o', '--output_dir', type=str, required=True, help='output directory')
+    parser.add_argument('-psim', '--pre_simulated', type=str, required=False, help='Presimulated data directory')
+    parser.add_argument('-rcon', '--reconstructor', type=str, required=False, help='Presimulated data directory', default='strainline')
     parser.add_argument('--perfect', action=argparse.BooleanOptionalAction)
 
     args = parser.parse_args()
@@ -35,13 +37,23 @@ def main():
             worker.run_workflow()
 
         case 'simulate_file':
-            Simulation.test_from_csv(
-                path_to_input=args.metadata,
-                output_dir=args.output_dir,
-                path_to_fasta=args.references,
-                perfect=args.perfect
-            )
-
+            if args.pre_simulated:
+                Simulation.test_from_csv(
+                    path_to_input=args.metadata,
+                    output_dir=args.output_dir,
+                    path_to_fasta=args.references,
+                    perfect=args.perfect,
+                    presimulated_path=args.pre_simulated,
+                    reconstructor=args.reconstructor
+                )
+            else:
+                Simulation.test_from_csv(
+                    path_to_input=args.metadata,
+                    output_dir=args.output_dir,
+                    path_to_fasta=args.references,
+                    perfect=args.perfect,
+                    reconstructor=args.reconstructor
+                )
 
 if __name__ == '__main__':
     main()

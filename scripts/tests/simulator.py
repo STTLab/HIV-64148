@@ -1,4 +1,5 @@
 
+import traceback
 import os, tarfile, shutil, glob
 import requests
 import subprocess
@@ -56,7 +57,9 @@ class Simulator(object):
             '--model_prefix', model_prefix,
             '--output', f'{run_dir}/simulated',
             '--max_len', '12000',
-            '--min_len', '3500',
+            '--min_len', '7500',
+            '-med', '9000',
+            '-sd', '0.75',
             '-t', '32',
             '--basecaller', 'guppy',
             '--fastq'
@@ -128,22 +131,19 @@ class Simulation(object):
         self.dataset = ''
 
     @classmethod
-    def test_from_csv(cls, path_to_input, output_dir, path_to_fasta, perfect=True):
+    def test_from_csv(cls, path_to_input, output_dir, path_to_fasta, perfect=True, presimulated_path=None, reconstructor='strainline'):
         selected = pd.read_csv(path_to_input)
         fasta = FASTA.read(path_to_fasta)
         errors = []
         for sim in pd.unique(selected['simulation_no']):
             this_output_dir = f'{output_dir}/{sim}'
+            if os.path.exists(f'{this_output_dir}/pipeline_output/hiv-64148_report.html'):
+                logger.info(f'Found report for {sim}...Skipping')
+                continue
             logger.info(f'Start simulation: {sim}')
             selected_seq = selected.loc[selected['simulation_no'] == sim].reset_index(drop=True)
             with TemporaryDirectory() as _temp:
-                _seqs = [ fasta.extract(accession) for accession in selected_seq['ID'] ]
-                # Partial genome
-                seqs_path = []
-                for seq in _seqs:
-                    seq.seq = seq.seq[:int(len(seq)/2)]
-                    SeqIO.write(seq, f'{_temp}/{seq.id}', 'fasta')
-                    seqs_path.append(f'{_temp}/{seq.id}')
+                seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
                 abundances = [20, 20, 20, 20, 20]
                 to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
                 # Start simulation
@@ -177,7 +177,7 @@ class Simulation(object):
                         reads = open(file, 'r').read()
                         all_reads.write(reads)
             subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
-            worker = Worker('Simulator', {'subtype_count': subtype_count})
+            worker = Worker('Simulator', {'subtype_count': subtype_count}, reconstructor=reconstructor)
             job = worker.assign_job(f'{this_output_dir}/data/simulated_all_reads.fastq', f'{this_output_dir}/pipeline_output', True)
             logger.info(f'Job created (id:{job})')
             try:
@@ -187,8 +187,10 @@ class Simulation(object):
                     'job-id': job,
                     'process': 'HIV-64148',
                     'sample': selected_seq['ID'].values,
-                    'message': error
+                    'message': error,
+                    'traceback': traceback.format_exc()
                 })
+                # raise error
         if len(errors) > 0:
             pd.DataFrame(errors).to_csv(f'{output_dir}/errors.csv')
 
