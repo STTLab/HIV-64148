@@ -10,6 +10,7 @@ from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
 from workflow.workflow import Worker
+from Bio import SeqIO
 
 class Simulator(object):
     pre_trained_dir = './tests/pre-trained_models'
@@ -136,7 +137,13 @@ class Simulation(object):
             logger.info(f'Start simulation: {sim}')
             selected_seq = selected.loc[selected['simulation_no'] == sim].reset_index(drop=True)
             with TemporaryDirectory() as _temp:
-                seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
+                _seqs = [ fasta.extract(accession) for accession in selected_seq['ID'] ]
+                # Partial genome
+                seqs_path = []
+                for seq in _seqs:
+                    seq.seq = seq.seq[:int(len(seq)/2)]
+                    SeqIO.write(seq, f'{_temp}/{seq.id}', 'fasta')
+                    seqs_path.append(f'{_temp}/{seq.id}')
                 abundances = [20, 20, 20, 20, 20]
                 to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
                 # Start simulation
