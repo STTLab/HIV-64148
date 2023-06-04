@@ -319,14 +319,15 @@ def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam
     match fmt:
         case 'bam':
             cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
-            alignment = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            process = subprocess.Popen(" ".join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate()
+            with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as alignment:
+                with subprocess.Popen(' '.join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) as process:
+                    _, _ = process.communicate()
         case 'sam':
             with open(output, 'w', encoding='utf-8') as file:
                 cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
-                process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.PIPE)
-        case _: raise ValueError(f'{fmt} is not a correct output format. (Only sam or bam is allowed)')
+                with subprocess.Popen(cmd, stdout=file, stderr=subprocess.PIPE) as process:
+                    pass
+        case _: raise ValueError(f'Incorrect output format, {fmt}. (Only sam or bam is allowed)')
     return process.returncode
 
 def snippy(
@@ -380,15 +381,13 @@ def snippy(
     elif input_type == 'contigs':
         cmd.extend(['--ctgs', input_file])
 
-    try:
-        ps = subprocess.run(cmd)
-        output = {
-            'return_code': ps.returncode,
-            'output': {
-                'output_dir': output_dir,
-                'snps': f'{output_dir}/snps.vcf',
-                'consensus': f'{output_dir}/snps.consensus.fa'
-            }
+    process, _ = run_command_with_logging(cmd, f'{output_dir}/logging/snippy_usage.csv')
+    output = {
+        'return_code': process.returncode,
+        'output': {
+            'output_dir': output_dir,
+            'snps': f'{output_dir}/snps.vcf',
+            'consensus': f'{output_dir}/snps.consensus.fa'
         }
     }
     return output
