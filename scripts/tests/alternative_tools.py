@@ -9,7 +9,7 @@ def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', threads=cpu_co
     alignment_file = f'{output_dir}/alignment.sam'
     minimap2(input_fastq, reference, alignment_file, fmt='bam')
     os.chdir('/opt/RVhaplo')
-    ps = subprocess.run(
+    process = subprocess.run(
         [
             './rvhaplo.sh',
             '--input', alignment_file,
@@ -17,9 +17,9 @@ def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', threads=cpu_co
             '--out', output_dir,
             '--prefix', prefix,
             '-t', str(threads)
-        ])
+        ], check=True)
     os.chdir('/hiv64148/scripts')
-    return ps.returncode
+    return process.returncode
 
 def reformat_rvhaplo(haplotype_fa, output):
     ori = SeqIO.parse(haplotype_fa, 'fasta')

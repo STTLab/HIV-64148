@@ -1,5 +1,6 @@
 
 import os
+import sys
 import glob
 import time
 import shutil
@@ -45,6 +46,8 @@ class Worker(object):
             if overwrite:
                 shutil.rmtree(output_dir)
                 os.makedirs(output_dir)
+            else:
+                sys.exit(73)
         self.output_dir = output_dir
         return self.job_id
 
@@ -74,24 +77,35 @@ class Worker(object):
         tracemalloc.start()
         self._stat['t_start'] = time.time()
 
-        if not os.path.exists(self.output_dir): os.makedirs(self.output_dir)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
         self.run_qc(self._input_fastq, f'{self.output_dir}/qc')
 
-        # Strainline
+        # Haplotype reconstruction
         match self.reconstructor:
             case 'rvhaplo':
-                rvhaplo(self._input_fastq, '/hiv64148/data/K03455.fasta', f'{self.output_dir}/rvhaplo')
-                reformat_rvhaplo(f'{self.output_dir}/rvhaplo/rvhaplo/rvhaplo_consensus.fasta', f'{self.output_dir}/haplotypes.final.fa')
+                # RVHaplo
+                rvhaplo(
+                    self._input_fastq,
+                    '/hiv64148/data/K03455.fasta',
+                    f'{self.output_dir}/rvhaplo'
+                )
+                reformat_rvhaplo(
+                    f'{self.output_dir}/rvhaplo/rvhaplo/rvhaplo_consensus.fasta',
+                    f'{self.output_dir}/haplotypes.final.fa'
+                )
                 logger.info('Finished - RVHaplo')
             case _:
+                # Strainline
                 with TemporaryDirectory() as _tmpdir:
                     os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
                     strainline(
                         input_fastq=f'{_tmpdir}/raw_reads.fastq',
                         output_dir=_tmpdir
                     )
-                    logger.info(f'Moving Strainline output to {self.output_dir}')
-                    [ shutil.move(file, self.output_dir) for file in glob.glob(f'{_tmpdir}/*') ]
+                    logger.info('Moving Strainline output to %s', self.output_dir)
+                    for file in glob.glob(f'{_tmpdir}/*'):
+                        shutil.move(file, self.output_dir)
                     logger.info('Finished - Strainline')
 
         # Log memory
@@ -100,7 +114,11 @@ class Worker(object):
         tracemalloc.reset_peak()
 
         # BLAST
-        blast = BLAST.blast_nucleotide(f'{self.output_dir}/haplotypes.final.fa', settings['data']['blast']['dbtitle'], self.output_dir)
+        blast = BLAST.blast_nucleotide(
+            f'{self.output_dir}/haplotypes.final.fa',
+            settings['data']['blast']['dbtitle'],
+            self.output_dir
+        )
         logger.info('Finished - BLASTN')
 
         # Log memory
@@ -120,7 +138,7 @@ class Worker(object):
                 seq = haplotype_seqs.extract(hap)
                 SeqIO.write(seq, f'{_temp}/{hap}.fasta', 'fasta')
                 subtype = BLAST.get_subtypes(settings['data']['blast']['dbtitle'], iden)
-                logger.info(f'Haplotype {hap} identified as {iden}, {subtype}')
+                logger.info('Haplotype %s identified as %s, %s', hap, iden, subtype)
                 rep_seqs.extract(rep_ids[subtype], save_to=f'{_temp}/{subtype}.fasta')
                 snippy(
                     input_file=f'{_temp}/{hap}.fasta',
@@ -137,9 +155,7 @@ class Worker(object):
         tracemalloc.stop()
 
         gql = open('../utilities/gql/sequence_analysis.gql').read()
-        seqs = [
-            Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta')
-        ]
+        seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
         hivdb_result = hivdb_seq_analysis(seqs, gql)
 
         logger.info('Generating report')
