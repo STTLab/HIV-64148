@@ -41,7 +41,7 @@ COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
 COPY ./requirements.txt /hiv64148/requirements.txt
 
-RUN ["pip", "install", "-f", "/hiv64148/requirements.txt"]
+RUN ["pip", "install", "-r", "/hiv64148/requirements.txt"]
 
 WORKDIR /workspace
 CMD ["/bin/bash"]
