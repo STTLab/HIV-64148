@@ -18,7 +18,7 @@ RUN apt-get install -y curl
 RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/1.4.1 | tar -xvj bin/micromamba
 # RUN ["./bin/micromamba", "shell", "init", "-s", "bash", "-p", "/micromamba"]
 ENV MAMBA_ROOT_PREFIX="/micromamba/bin/"
-ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}"
+ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}:/opt/Strainline/src/"
 RUN ["micromamba", "--version"]
 
 # Install Strainline
@@ -34,23 +34,14 @@ RUN ["tar", "-zvxf", "daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gn
 RUN ["rm", "daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
 RUN ["ln", "-fs", "/opt/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu/bin/daccord", "/micromamba/bin/envs/venv/bin/daccord"]
 
-# Install Snippy
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "snippy==4.6.0"]
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y", "snpeff==4.5covid19"]
-
-# Install BLAST+
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y","blast"]
-
+RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "snippy==4.6.0", "blast"]
 RUN ["micromamba", "clean", "--all", "-y"]
-
-RUN ["pip","install", "biopython", "pandas", "numpy"]
-RUN ["pip", "install", "yattag", "sierrapy", "jinja2"]
-
 
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
+COPY ./requirements.txt /hiv64148/requirements.txt
 
-RUN ["ln", "-fs", "/opt/Strainline/src/*", "/micromamba/bin/envs/venv/bin"]
+RUN ["pip", "install", "-f", "/hiv64148/requirements.txt"]
 
 WORKDIR /workspace
 CMD ["/bin/bash"]
