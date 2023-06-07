@@ -28,6 +28,7 @@ import threading
 import functools
 import psutil
 import pandas as pd
+from .logger import logger
 
 def stream_output(process: subprocess.Popen) -> None:
     '''
@@ -108,7 +109,7 @@ def log_resource_usage(interval=0.1, output_file='resource_usage_log.csv'):
     '''
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             t_start = time.time()
 
             # Create an empty list to store resource usage data
@@ -148,8 +149,8 @@ def log_resource_usage(interval=0.1, output_file='resource_usage_log.csv'):
                                 ps_cpu_usage, ps_memory_usage, ps_disk_read, ps_disk_write,
                                 bg_cpu_usage, bg_memory_usage, bg_disk_read, bg_disk_write
                             ))
-                    except psutil.Error as err:
-                        print('error,', err)
+                    except psutil.Error as error:
+                        logger.debug('%s', error)
 
                     if not func_running.is_set():
                         break
@@ -164,7 +165,7 @@ def log_resource_usage(interval=0.1, output_file='resource_usage_log.csv'):
 
             try:
                 # Execute the function and its subprocess calls
-                result = func(*args, **kwargs)
+                result = func(self, *args, **kwargs)
 
             finally:
                 # Signal the completion of the function
@@ -183,7 +184,7 @@ def log_resource_usage(interval=0.1, output_file='resource_usage_log.csv'):
                         'BG Memory Usage (kilobytes)', 'BG Disk Read (bytes)',
                         'BG Disk Write (bytes)'
                     ],
-                ).to_csv(output_file, index=False) # Save the DataFrame to a CSV file
+                ).to_csv(f'{self.output_dir}/{output_file}', index=False) # Save the DataFrame to a CSV file
 
             return result
 
