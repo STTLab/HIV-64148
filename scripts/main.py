@@ -27,12 +27,12 @@ def main():
         case 'run':
             worker = Worker()
             job = worker.assign_job(args.input, args.output_dir, True)
-            logger.info(f'Job created (id:{job})')
+            logger.info('Job created (id: %s)', job)
             worker.run_workflow()
         case 'run_cli':
             worker = Worker()
             job = worker.assign_job_cli()
-            logger.info(f'Job created (id:{job})')
+            logger.info('Job created (id: %s)', job)
             worker.run_workflow()
         case 'setup':
             setup_workflow()
