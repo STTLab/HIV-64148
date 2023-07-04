@@ -242,7 +242,7 @@ class BLAST:
     def get_subtypes(cls, dbtitle, accession):
         iden_seq = FASTA.read_and_extract(f'{cls.db_path}/{dbtitle}', accession)
         subtype_regex = re.compile(
-            r'CRF[0-9]{2}_[A-Z]{2}|CRF[0-9]{2}_[A-Z][0-9][A-Z]|subtype_[A,B,C,D,F,F1,F2,G]'
+            r'CRF[0-9]{2}_[A-Z]{2}|CRF[0-9]{2}_[A-Z][0-9][A-Z]|subtype_[A,B,C,D,F,G][1,2]?'
         )
         subtype = subtype_regex.findall(iden_seq.description)[0] # pyright: ignore reportGeneralTypeIssues=false
         return subtype
