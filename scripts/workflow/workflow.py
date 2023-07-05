@@ -147,7 +147,7 @@ class Worker(object):
                 with TemporaryDirectory() as _tmpdir:
                     os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
                     strainline(
-                        input_fastq=f'{_tmpdir}/raw_reads.fastq',
+                        input_file=f'{_tmpdir}/raw_reads.fastq',
                         output_dir=_tmpdir
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
@@ -200,6 +200,8 @@ class Worker(object):
         _, _peak = tracemalloc.get_traced_memory()
         self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.stop()
+
+        # Stanford HIVDB API
         with open(
             '/hiv64148/scripts/utilities/gql/sequence_analysis.gql', 'r',
             encoding='utf-8'

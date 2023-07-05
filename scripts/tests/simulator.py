@@ -1,16 +1,22 @@
 
+import sys
+import os
+import tarfile
+import shutil
+import glob
 import traceback
-import os, tarfile, shutil, glob
 from tempfile import TemporaryDirectory
 import subprocess
-import requests
+from pathlib import Path
 import numpy as np
 import pandas as pd
-from pathlib import Path
+import requests
 from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
 from workflow.workflow import Worker
+
+# pylint: disable=line-too-long, consider-using-with
 
 class Simulator(object):
     pre_trained_dir = './tests/pre-trained_models'
@@ -23,12 +29,15 @@ class Simulator(object):
         Simulate ONT reads for linear metagenome sample.
         '''
         # Check if inputs are valid
-        if num_reads < 0: raise ValueError('Reads must be more than 0.')
+        if num_reads < 0:
+            raise ValueError('Reads must be more than 0.')
         _abun_sum = 0
         for item in inputs:
-            if len(item) != 3: raise IndexError()
+            if len(item) != 3:
+                raise IndexError()
             _abun_sum += item[2]
-        if _abun_sum != 100: raise ValueError('Abundance must sum up to 100.')
+        if _abun_sum != 100:
+            raise ValueError('Abundance must sum up to 100.')
 
         # Create metadata
         genome_list = open(f'{run_dir}/ref_list.tsv', 'w', encoding='utf-8')
@@ -65,7 +74,7 @@ class Simulator(object):
         ]
         if perfect:
             cmd.append('--perfect')
-        process = subprocess.run(cmd)
+        process = subprocess.run(cmd, check=True)
         return process.returncode
 
     @classmethod
@@ -102,12 +111,14 @@ class Simulator(object):
         and their return code are both 0; do nothing and return `None`.
         '''
         # If able to run; Do nothing...
-        if cls._check() == 0: return
+        if cls._check() == 0:
+            sys.exit()
 
-        try: subprocess.run(['micromamba', '--help'], check=True)
+        try:
+            subprocess.run(['micromamba', '--help'], check=True)
         except subprocess.CalledProcessError:
             logger.error('Micormamba not installed. Install Micromamba and try again.')
-            exit(1)
+            sys.exit(1)
 
         subprocess.run(['micromamba', 'create', '-n', 'nanosim', '-c', 'conda-forge', 'python=3.7', '-y'])
         logger.info('Created micromamba environment \'nanosim\' with Python 3.7')
@@ -183,17 +194,18 @@ class Simulation(object):
                     })
                     continue
                 # Clean up
-                if os.path.exists(this_output_dir):
-                    shutil.rmtree(this_output_dir)
-                os.makedirs(this_output_dir)
-                selected.to_csv(f'{this_output_dir}/pre-simulation-seq.tsv', sep='\t')
+                simulated_output_dir = f'{this_output_dir}/data'
+                if os.path.exists(simulated_output_dir):
+                    shutil.rmtree(simulated_output_dir)
+                os.makedirs(simulated_output_dir)
+                selected.to_csv(f'{simulated_output_dir}/pre-simulation-seq.tsv', sep='\t')
                 keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
                 for file in keep:
-                    if os.path.exists(f'{this_output_dir}/{Path(file).name}'):
-                        os.remove(f'{this_output_dir}/{Path(file).name}')
-                    shutil.move(file, f'{this_output_dir}')
-                with open(f'{this_output_dir}/simulated_all_reads.fastq', 'w', encoding='utf-8') as all_reads:
-                    for file in glob.glob(f'{this_output_dir}/*.fastq'):
+                    if os.path.exists(f'{simulated_output_dir}/{Path(file).name}'):
+                        os.remove(f'{simulated_output_dir}/{Path(file).name}')
+                    shutil.move(file, f'{simulated_output_dir}')
+                with open(f'{simulated_output_dir}/simulated_all_reads.fastq', 'w', encoding='utf-8') as all_reads:
+                    for file in glob.glob(f'{simulated_output_dir}/*.fastq'):
                         reads = open(file, 'r', encoding='utf-8').read()
                         all_reads.write(reads)
             subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
