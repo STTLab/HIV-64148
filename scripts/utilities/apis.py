@@ -5,11 +5,8 @@ from Bio import SeqIO
 import multiprocessing
 from io import StringIO
 from uuid import uuid4
-from yattag.doc import Doc
-from yattag.indentation import indent
 from sierrapy import SierraClient
 from sierrapy.sierraclient import Sequence
-from functools import lru_cache
 from utilities.logger import logger
 from utilities.settings import secrets
 
@@ -30,7 +27,7 @@ class EutilsNCBI:
         params = {
             'db': 'nucleotide',
             'id': accession,
-            'retmode': 'fasta',
+            'retmode': 'text',
             'rettype': 'fasta'
         }
         if cls.API_KEY != '____YOUR_KEY____': params['api_key'] = cls.API_KEY
@@ -56,6 +53,26 @@ class EutilsNCBI:
             seq.description = f'{subtype}'
         if save_to:
             SeqIO.write(seq, save_to, 'fasta')
+            return
+        return seq
+    
+    @classmethod
+    def fetch_gbk(cls, accession, save_to=None, strip_info=False):
+        params = {
+            'db': 'nucleotide',
+            'id': accession,
+            'retmode': 'text',
+            'rettype': 'gb'
+        }
+        if cls.API_KEY != '____YOUR_KEY____': params['api_key'] = cls.API_KEY
+        logger.debug(f'Fetching sequence {accession}')
+        res = requests.get(f'{cls.END_POINT}/efetch.fcgi', params=params)
+        seq = SeqIO.read(StringIO(res.content.decode()), 'genbank')
+        if strip_info:
+            seq.name = ''
+            seq.description = ''
+        if save_to:
+            SeqIO.write(seq, save_to, 'genbank')
             return
         return seq
 

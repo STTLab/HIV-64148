@@ -17,7 +17,8 @@ from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
-from tests.alternative_tools import rvhaplo, reformat_rvhaplo
+from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf
+from utilities.benchmark_utils import log_resource_usage
 
 class Worker(object):
 
@@ -46,6 +47,7 @@ class Worker(object):
             if overwrite:
                 shutil.rmtree(output_dir)
                 os.makedirs(output_dir)
+                os.makedirs(f'{output_dir}/logging')
             else:
                 sys.exit(73)
         self.output_dir = output_dir
@@ -73,6 +75,7 @@ class Worker(object):
                 return
         return nanoplot_qc(input_file, input_type, output_dir)
 
+    @log_resource_usage(interval=0.1, output_file=f"resource_usage_log.csv")
     def run_workflow(self):
         tracemalloc.start()
         self._stat['t_start'] = time.time()
@@ -87,21 +90,32 @@ class Worker(object):
                 # RVHaplo
                 rvhaplo(
                     self._input_fastq,
-                    '/hiv64148/data/K03455.fasta',
-                    f'{self.output_dir}/rvhaplo'
+                    '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
+                    self.output_dir,
                 )
                 reformat_rvhaplo(
-                    f'{self.output_dir}/rvhaplo/rvhaplo/rvhaplo_consensus.fasta',
+                    f'{self.output_dir}/rvhaplo/rvhaplo_consensus.fasta',
                     f'{self.output_dir}/haplotypes.final.fa'
                 )
                 logger.info('Finished - RVHaplo')
+            case 'haplodmf':
+                haplodmf(
+                    self._input_fastq,
+                    '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
+                    self.output_dir,
+                )
+            case 'goldrush':
+                goldrush(
+                    self._input_fastq,
+                    self.output_dir
+                )
             case _:
                 # Strainline
                 with TemporaryDirectory() as _tmpdir:
                     os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
                     strainline(
                         input_fastq=f'{_tmpdir}/raw_reads.fastq',
-                        output_dir=_tmpdir
+                        output_dir=_tmpdir,
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
                     for file in glob.glob(f'{_tmpdir}/*'):
@@ -154,7 +168,7 @@ class Worker(object):
         self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.stop()
 
-        gql = open('../utilities/gql/sequence_analysis.gql').read()
+        gql = open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql').read()
         seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
         hivdb_result = hivdb_seq_analysis(seqs, gql)
 
@@ -192,3 +206,4 @@ class Worker(object):
                 )
 
         report_randerer.render_report(report_ctx, f'{self.output_dir}/hiv-64148_report.html')
+        return None

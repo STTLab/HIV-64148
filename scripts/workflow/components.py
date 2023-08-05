@@ -314,7 +314,7 @@ class BLAST:
                 return res.loc[res['qseqid'] == qseqid].reset_index(drop=True)
             return res.reset_index(drop=True)
 
-def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> int:
+def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='sam') -> int:
     fmt = fmt.lower()
     match fmt:
         case 'bam':
@@ -323,10 +323,8 @@ def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam
                 with subprocess.Popen(' '.join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) as process:
                     _, _ = process.communicate()
         case 'sam':
-            with open(output, 'w', encoding='utf-8') as file:
-                cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
-                with subprocess.Popen(cmd, stdout=file, stderr=subprocess.PIPE) as process:
-                    pass
+            cmd = [settings['softwares']['minimap2'], '-o', output, '-ax', platform, reference, input_reads]
+            process = subprocess.run(cmd, check=True)
         case _: raise ValueError(f'Incorrect output format, {fmt}. (Only sam or bam is allowed)')
     return process.returncode
 

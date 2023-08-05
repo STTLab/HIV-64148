@@ -1,6 +1,6 @@
 
 import traceback
-import os, tarfile, shutil, glob
+import os, tarfile, shutil, glob, sys
 from tempfile import TemporaryDirectory
 import subprocess
 import requests
@@ -162,40 +162,51 @@ class Simulation(object):
                 continue
             logger.info('Start simulation: %s', sim)
             selected_seq = selected.loc[selected['simulation_no'] == sim].reset_index(drop=True)
-            with TemporaryDirectory() as _temp:
-                seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
-                abundances = [20, 20, 20, 20, 20]
-                to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
-                # Start simulation
-                try:
-                    Simulator.simulate_metagenome(
-                        inputs=to_simulate,
-                        num_reads=20000,
-                        model_prefix=settings['data']['nanosim']['model'],
-                        run_dir=_temp, perfect=perfect
-                    )
-                except Exception as error:                                          # pylint: disable=broad-exception-caught
-                    errors.append({
-                        'job-id': '-',
-                        'process': 'Simulator.simulate_metagenome',
-                        'sample': selected_seq['ID'].values,
-                        'message': error
-                    })
-                    continue
-                # Clean up
-                if os.path.exists(this_output_dir):
-                    shutil.rmtree(this_output_dir)
-                os.makedirs(this_output_dir)
-                selected.to_csv(f'{this_output_dir}/pre-simulation-seq.tsv', sep='\t')
-                keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
-                for file in keep:
-                    if os.path.exists(f'{this_output_dir}/{Path(file).name}'):
-                        os.remove(f'{this_output_dir}/{Path(file).name}')
-                    shutil.move(file, f'{this_output_dir}')
-                with open(f'{this_output_dir}/simulated_all_reads.fastq', 'w', encoding='utf-8') as all_reads:
-                    for file in glob.glob(f'{this_output_dir}/*.fastq'):
-                        reads = open(file, 'r', encoding='utf-8').read()
-                        all_reads.write(reads)
+            if presimulated_path and os.path.exists(f'{presimulated_path}/{sim}/data/simulated_all_reads.fastq'):
+                logger.info('Found presimulated FASTQ: %s', f'{presimulated_path.split("/")[-1]}/{sim}')
+                shutil.rmtree(f'{this_output_dir}/data/', ignore_errors=True)
+                os.makedirs(f'{this_output_dir}/data/')
+                os.symlink(f'{presimulated_path}/{sim}/data/simulated_all_reads.fastq', f'{this_output_dir}/data/simulated_all_reads.fastq')
+            else:
+                with TemporaryDirectory() as _temp:
+                    seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
+                    abundances = [20, 20, 20, 20, 20]
+                    try:
+                        to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
+                    except KeyError:
+                        to_simulate = list(zip(selected_seq['Accession'].values, seqs_path, abundances))
+                        sys.exit(1)
+
+                    # Start simulation
+                    try:
+                        Simulator.simulate_metagenome(
+                            inputs=to_simulate,
+                            num_reads=20000,
+                            model_prefix=settings['data']['nanosim']['model'],
+                            run_dir=_temp, perfect=perfect
+                        )
+                    except Exception as error:                                          # pylint: disable=broad-exception-caught
+                        errors.append({
+                            'job-id': '-',
+                            'process': 'Simulator.simulate_metagenome',
+                            'sample': selected_seq['ID'].values,
+                            'message': error
+                        })
+                        continue
+                    # Clean up
+                    if os.path.exists(this_output_dir):
+                        shutil.rmtree(this_output_dir)
+                    os.makedirs(this_output_dir)
+                    selected.to_csv(f'{this_output_dir}/pre-simulation-seq.tsv', sep='\t')
+                    keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
+                    for file in keep:
+                        if os.path.exists(f'{this_output_dir}/{Path(file).name}'):
+                            os.remove(f'{this_output_dir}/{Path(file).name}')
+                        shutil.move(file, f'{this_output_dir}')
+                    with open(f'{this_output_dir}/simulated_all_reads.fastq', 'w', encoding='utf-8') as all_reads:
+                        for file in glob.glob(f'{this_output_dir}/*.fastq'):
+                            reads = open(file, 'r', encoding='utf-8').read()
+                            all_reads.write(reads)
             subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
             worker = Worker('Simulator',{'subtype_count':subtype_count},reconstructor=reconstructor)
             job = worker.assign_job(f'{this_output_dir}/data/simulated_all_reads.fastq', f'{this_output_dir}/pipeline_output', True)
