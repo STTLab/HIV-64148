@@ -73,3 +73,50 @@ def reformat_goldrush(haplotype_fa, output):
         reformatted.append(seq)
     SeqIO.write(reformatted, output, 'fasta')
     return
+
+def flye(input_fastq, output_dir, threads=cpu_count(), **kwargs):
+    '''
+    Run de novo haplotype reconstruction with MetaFlye
+    '''
+    # kwags processing
+    min_overlap = kwargs.get('min_overlap', 1000)
+    read_error = kwargs.get('read_error', 0.0)
+    keep_haplotypes = kwargs.get('keep_haplotypes', True)
+
+    with TemporaryDirectory() as _tmpdir:
+        raw_reads = f'{_tmpdir}/raw_reads.fastq'
+        os.symlink(input_fastq, raw_reads)
+        cmd = [
+            'micromamba', 'run', '-n', 'flye',
+            'flye', '--nano-raw', raw_reads,
+            '--genome-size', '10k',
+            '--min-overlap', str(min_overlap),
+            '--read-error', str(read_error),
+            '--threads', str(threads),
+            '--out-dir', _tmpdir,
+        ]
+        if keep_haplotypes:
+            cmd.append('--keep-haplotypes')
+        process = subprocess.run(cmd, check=True)
+
+        final_assembly = f'{_tmpdir}/assembly.fasta'
+        if os.path.exists(final_assembly):
+            reformat_flye_output(final_assembly, f'{output_dir}/haplotypes.final.fa')
+        # Move additional final output files
+        to_move = (
+            'assembly_graph.gfa',
+            'assembly_graph.gv',
+            'flye.log'
+        )
+        for file in to_move:
+            shutil.move(f'{_tmpdir}/{file}', output_dir)
+    return process.returncode
+
+def reformat_flye_output(haplotype_fa, output):
+    ori = list(SeqIO.parse(haplotype_fa, 'fasta'))
+    reformatted = []
+    for i,seq in enumerate(ori):
+        seq.id = f'contig_{i+1} N/Ax freq=N/A'
+        reformatted.append(seq)
+    SeqIO.write(reformatted, output, 'fasta')
+    return

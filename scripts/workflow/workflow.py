@@ -17,7 +17,7 @@ from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
-from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf
+from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf, flye
 from utilities.benchmark_utils import log_resource_usage
 
 class Worker(object):
@@ -106,6 +106,11 @@ class Worker(object):
                 )
             case 'goldrush':
                 goldrush(
+                    self._input_fastq,
+                    self.output_dir
+                )
+            case 'flye':
+                flye(
                     self._input_fastq,
                     self.output_dir
                 )
