@@ -112,7 +112,7 @@ def strainline(
         '--correctErr', str(err_cor),
         '--threads', str(threads)
     ]
-    process, _ = run_command_with_logging(cmd, save_to=f'{output_dir}/logging/strainline_usage.csv')
+    process = run_command_with_logging(cmd)
     if clean_up:
         logger.info('Removing intermediate files.')
         to_remove = [
@@ -221,7 +221,7 @@ class BLAST:
             '-outfmt', '6',
             '-num_threads', threads
         ]
-        process, _ = run_command_with_logging(cmd, save_to=f'{output_dir}/logging/blast_usage.csv')
+        process = run_command_with_logging(cmd)
         return {
             'return_code': process.returncode,
             'output': {
@@ -379,7 +379,7 @@ def snippy(
     elif input_type == 'contigs':
         cmd.extend(['--ctgs', input_file])
 
-    process, _ = run_command_with_logging(cmd, f'{output_dir}/logging/snippy_usage.csv')
+    process = run_command_with_logging(cmd)
     output = {
         'return_code': process.returncode,
         'output': {
