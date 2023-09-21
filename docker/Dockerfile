@@ -84,10 +84,10 @@ RUN ["micromamba", "--version"]
 # Install Snippy
 RUN ["micromamba", "create", "-n", "venv"]
 RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "snippy==4.6.0"]
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y", "snpeff==4.5covid19"]
+# RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y", "snpeff==4.5covid19"]
 
 # Install BLAST+
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y","blast"]
+RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y","blast"]
 
 # Install NanoPlot
 RUN ["micromamba", "create", "-n", "nanoplot", "-c", "bioconda", "-c", "conda-forge", "-y", "nanoplot"]
