@@ -1,22 +1,16 @@
 
-import sys
-import os
-import tarfile
-import shutil
-import glob
 import traceback
+import os, tarfile, shutil, glob, sys
 from tempfile import TemporaryDirectory
 import subprocess
-from pathlib import Path
+import requests
 import numpy as np
 import pandas as pd
-import requests
+from pathlib import Path
 from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
 from workflow.workflow import Worker
-
-# pylint: disable=line-too-long, consider-using-with
 
 class Simulator(object):
     pre_trained_dir = './tests/pre-trained_models'
@@ -29,15 +23,12 @@ class Simulator(object):
         Simulate ONT reads for linear metagenome sample.
         '''
         # Check if inputs are valid
-        if num_reads < 0:
-            raise ValueError('Reads must be more than 0.')
+        if num_reads < 0: raise ValueError('Reads must be more than 0.')
         _abun_sum = 0
         for item in inputs:
-            if len(item) != 3:
-                raise IndexError()
+            if len(item) != 3: raise IndexError()
             _abun_sum += item[2]
-        if _abun_sum != 100:
-            raise ValueError('Abundance must sum up to 100.')
+        if _abun_sum != 100: raise ValueError('Abundance must sum up to 100.')
 
         # Create metadata
         genome_list = open(f'{run_dir}/ref_list.tsv', 'w', encoding='utf-8')
@@ -74,7 +65,7 @@ class Simulator(object):
         ]
         if perfect:
             cmd.append('--perfect')
-        process = subprocess.run(cmd, check=True)
+        process = subprocess.run(cmd)
         return process.returncode
 
     @classmethod
@@ -111,14 +102,12 @@ class Simulator(object):
         and their return code are both 0; do nothing and return `None`.
         '''
         # If able to run; Do nothing...
-        if cls._check() == 0:
-            sys.exit()
+        if cls._check() == 0: return
 
-        try:
-            subprocess.run(['micromamba', '--help'], check=True)
+        try: subprocess.run(['micromamba', '--help'], check=True)
         except subprocess.CalledProcessError:
             logger.error('Micormamba not installed. Install Micromamba and try again.')
-            sys.exit(1)
+            exit(1)
 
         subprocess.run(['micromamba', 'create', '-n', 'nanosim', '-c', 'conda-forge', 'python=3.7', '-y'])
         logger.info('Created micromamba environment \'nanosim\' with Python 3.7')
@@ -173,41 +162,52 @@ class Simulation(object):
                 continue
             logger.info('Start simulation: %s', sim)
             selected_seq = selected.loc[selected['simulation_no'] == sim].reset_index(drop=True)
-            with TemporaryDirectory() as _temp:
-                seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
-                abundances = [20, 20, 20, 20, 20]
-                to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
-                # Start simulation
-                try:
-                    Simulator.simulate_metagenome(
-                        inputs=to_simulate,
-                        num_reads=20000,
-                        model_prefix=settings['data']['nanosim']['model'],
-                        run_dir=_temp, perfect=perfect
-                    )
-                except Exception as error:                                          # pylint: disable=broad-exception-caught
-                    errors.append({
-                        'job-id': '-',
-                        'process': 'Simulator.simulate_metagenome',
-                        'sample': selected_seq['ID'].values,
-                        'message': error
-                    })
-                    continue
-                # Clean up
-                simulated_output_dir = f'{this_output_dir}/data'
-                if os.path.exists(simulated_output_dir):
-                    shutil.rmtree(simulated_output_dir)
-                os.makedirs(simulated_output_dir)
-                selected.to_csv(f'{simulated_output_dir}/pre-simulation-seq.tsv', sep='\t')
-                keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
-                for file in keep:
-                    if os.path.exists(f'{simulated_output_dir}/{Path(file).name}'):
-                        os.remove(f'{simulated_output_dir}/{Path(file).name}')
-                    shutil.move(file, f'{simulated_output_dir}')
-                with open(f'{simulated_output_dir}/simulated_all_reads.fastq', 'w', encoding='utf-8') as all_reads:
-                    for file in glob.glob(f'{simulated_output_dir}/*.fastq'):
-                        reads = open(file, 'r', encoding='utf-8').read()
-                        all_reads.write(reads)
+            if presimulated_path and os.path.exists(f'{presimulated_path}/{sim}/data/simulated_all_reads.fastq'):
+                logger.info('Found presimulated FASTQ: %s', f'{presimulated_path.split("/")[-1]}/{sim}')
+                shutil.rmtree(f'{this_output_dir}/data/', ignore_errors=True)
+                os.makedirs(f'{this_output_dir}/data/')
+                os.symlink(f'{presimulated_path}/{sim}/data/simulated_all_reads.fastq', f'{this_output_dir}/data/simulated_all_reads.fastq')
+            else:
+                with TemporaryDirectory() as _temp:
+                    seqs_path = [ fasta.extract(accession, save_to=f'{_temp}/{accession}') for accession in selected_seq['ID'] ]
+                    abundances = [50,50]# [20, 20, 20, 20, 20]
+                    try:
+                        to_simulate = list(zip(selected_seq['ID'].values, seqs_path, abundances))
+                    except KeyError:
+                        to_simulate = list(zip(selected_seq['Accession'].values, seqs_path, abundances))
+                        sys.exit(1)
+
+                    # Start simulation
+                    try:
+                        Simulator.simulate_metagenome(
+                            inputs=to_simulate,
+                            num_reads=2000,
+                            model_prefix=settings['data']['nanosim']['model'],
+                            run_dir=_temp, perfect=perfect
+                        )
+                    except Exception as error:                                          # pylint: disable=broad-exception-caught
+                        errors.append({
+                            'job-id': '-',
+                            'process': 'Simulator.simulate_metagenome',
+                            'sample': selected_seq['ID'].values,
+                            'message': error
+                        })
+                        continue
+                    # Clean up
+                    sim_output_dir = f'{this_output_dir}/data'
+                    if os.path.exists(sim_output_dir):
+                        shutil.rmtree(sim_output_dir)
+                    os.makedirs(sim_output_dir)
+                    selected.to_csv(f'{sim_output_dir}/pre-simulation-seq.tsv', sep='\t')
+                    keep = [f'{_temp}/abun_list.tsv', *glob.glob(f'{_temp}/*error_profile'), *glob.glob(f'{_temp}/*.fastq')]
+                    for file in keep:
+                        if os.path.exists(f'{sim_output_dir}/{Path(file).name}'):
+                            os.remove(f'{sim_output_dir}/{Path(file).name}')
+                        shutil.move(file, f'{sim_output_dir}')
+                    with open(f'{sim_output_dir}/simulated_all_reads.fastq', 'w', encoding='utf-8') as all_reads:
+                        for file in glob.glob(f'{sim_output_dir}/*.fastq'):
+                            reads = open(file, 'r', encoding='utf-8').read()
+                            all_reads.write(reads)
             subtype_count = selected_seq.groupby(['Subtype'])['Subtype'].count().to_dict()
             worker = Worker('Simulator',{'subtype_count':subtype_count},reconstructor=reconstructor)
             job = worker.assign_job(f'{this_output_dir}/data/simulated_all_reads.fastq', f'{this_output_dir}/pipeline_output', True)
@@ -222,7 +222,7 @@ class Simulation(object):
                     'message': error,
                     'traceback': traceback.format_exc()
                 })
-                # raise error
+                raise error
         if len(errors) > 0:
             pd.DataFrame(errors).to_csv(f'{output_dir}/errors.csv')
 
