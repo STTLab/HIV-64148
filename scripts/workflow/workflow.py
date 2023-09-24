@@ -17,7 +17,7 @@ from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
-from tests.alternative_tools import rvhaplo, reformat_rvhaplo
+from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf, flye
 from utilities.benchmark_utils import log_resource_usage
 
 class Worker(object):
@@ -32,37 +32,9 @@ class Worker(object):
         self.additionals = additionals
 
     def get_peak_mem(self) -> dict:
-        '''
-        Retrieve the peak memory information.
-
-        This method returns the peak memory information stored in 
-        the `_stat` attribute of the Worker object.
-        The peak memory information is represented as a dictionary.
-
-        Returns:
-            dict: A dictionary containing the peak memory information.
-
-        Example:
-            >>> worker = Worker()
-            >>> # worker.run(... some job ...)
-            >>> peak_memory = worker.get_peak_mem()
-        '''
         return self._stat.get('peak_mem', {})
 
     def get_runtime(self):
-        '''
-        Get the runtime of the worker.
-
-        This method calculates and returns the runtime of the worker since its creation.
-        The runtime is represented as a `timedelta` object.
-
-        Returns:
-            timedelta: The runtime of the worker since its creation.
-
-        Example:
-            >>> worker = Worker()
-            >>> runtime = worker.get_runtime()
-        '''
         return timedelta(seconds=time.time() - self._stat.get('t_start', time.time()))
 
     def assign_job(self, input_fastq, output_dir, overwrite=False) -> UUID | None:
@@ -75,6 +47,7 @@ class Worker(object):
             if overwrite:
                 shutil.rmtree(output_dir)
                 os.makedirs(output_dir)
+                os.makedirs(f'{output_dir}/logging')
             else:
                 sys.exit(73)
         self.output_dir = output_dir
@@ -83,29 +56,13 @@ class Worker(object):
     def assign_job_cli(self):
         '''
         Command line interface for creating a job.
-
-        This method prompts the user for the path to a FASTQ file and the output directory.
-        If the output directory already exists, the user is asked if they want to overwrite it.
-        If confirmed, the existing directory is removed.
-        Afterward, the method calls the `assign_job` method with the provided parameters.
-
-        Returns:
-            The result of the `assign_job` method.
-
-        Raises:
-            SystemExit: If the user chooses not to overwrite an existing output directory.
-
-        Example:
-            >>> worker = Worker()
-            >>> worker.assign_job_cli()
         '''
-        fastq_file = input('Path to FASTQ: ')
-        output_dir = input('Output directory: ')
-        if os.path.exists(output_dir):
-            if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y':
-                sys.exit(73) # | 73 | EX_CANTCREAT: can't create (user) output file
-            shutil.rmtree(output_dir)
-        return self.assign_job(fastq_file, output_dir, True)
+        fq = input('Path to FASTQ: ')
+        od = input('Output directory: ')
+        if os.path.exists(od):
+            if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y': return
+            shutil.rmtree(od)
+        return self.assign_job(fq, od, True)
 
     @classmethod
     def run_qc(cls, input_file, output_dir):
@@ -118,14 +75,13 @@ class Worker(object):
                 return
         return nanoplot_qc(input_file, input_type, output_dir)
 
-    @log_resource_usage(interval=0.1, output_file='resource_usage_log.csv')
+    @log_resource_usage(interval=0.1, output_file=f"resource_usage_log.csv")
     def run_workflow(self):
         tracemalloc.start()
         self._stat['t_start'] = time.time()
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
-            os.makedirs(f'{self.output_dir}/logging')
         self.run_qc(self._input_fastq, f'{self.output_dir}/qc')
 
         # Haplotype reconstruction
@@ -134,21 +90,37 @@ class Worker(object):
                 # RVHaplo
                 rvhaplo(
                     self._input_fastq,
-                    '/hiv64148/data/K03455.fasta',
-                    f'{self.output_dir}/rvhaplo'
+                    '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
+                    self.output_dir,
                 )
                 reformat_rvhaplo(
-                    f'{self.output_dir}/rvhaplo/rvhaplo/rvhaplo_consensus.fasta',
+                    f'{self.output_dir}/rvhaplo/rvhaplo_consensus.fasta',
                     f'{self.output_dir}/haplotypes.final.fa'
                 )
                 logger.info('Finished - RVHaplo')
+            case 'haplodmf':
+                haplodmf(
+                    self._input_fastq,
+                    '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
+                    self.output_dir,
+                )
+            case 'goldrush':
+                goldrush(
+                    self._input_fastq,
+                    self.output_dir
+                )
+            case 'flye':
+                flye(
+                    self._input_fastq,
+                    self.output_dir
+                )
             case _:
                 # Strainline
                 with TemporaryDirectory() as _tmpdir:
                     os.symlink(self._input_fastq, f'{_tmpdir}/raw_reads.fastq')
                     strainline(
-                        input_file=f'{_tmpdir}/raw_reads.fastq',
-                        output_dir=_tmpdir
+                        input_fastq=f'{_tmpdir}/raw_reads.fastq',
+                        output_dir=_tmpdir,
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
                     for file in glob.glob(f'{_tmpdir}/*'):
@@ -201,18 +173,8 @@ class Worker(object):
         self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.stop()
 
-        # Stanford HIVDB API
-        with open(
-            '/hiv64148/scripts/utilities/gql/sequence_analysis.gql', 'r',
-            encoding='utf-8'
-        ) as gql_file:
-            gql = gql_file.read()
-        seqs = [
-            Sequence(
-                header=record.id,
-                sequence=str(record.seq)
-            ) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta')
-        ]
+        gql = open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql').read()
+        seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
         hivdb_result = hivdb_seq_analysis(seqs, gql)
 
         logger.info('Generating report')
