@@ -1,6 +1,5 @@
 import re
 import os
-import sys
 import glob
 import shutil
 import tempfile
@@ -17,7 +16,7 @@ from utilities.logger import logger
 from utilities.file_handler import FASTA
 from utilities.benchmark_utils import run_command_with_logging
 
-THREADS = str(cpu_count()-2 if cpu_count() >= 8 else cpu_count())
+THREADS = str(cpu_count()-1)
 
 def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     '''
@@ -73,7 +72,7 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     return process.returncode
 
 def strainline(
-        input_file,
+        input_fastq,
         output_dir,
         clean_up = True,
         platform:str = 'ont',
@@ -92,14 +91,10 @@ def strainline(
         err_cor:bool = True,
         threads:str|int = THREADS
     ) -> int:
-    strainline_exe = settings['softwares']['strainline'].split()
-    if not err_cor:
-        with SeqIO.read(input_file, 'fastq') as input_seq:
-            SeqIO.write(input_seq, f'{output_dir}/corrected.0.fa', 'fasta')
-        input_file = f'{output_dir}/corrected.0.fa'
+    strainline_exe = settings['softwares']['strainline']
     cmd = [
-        *strainline_exe,
-        '-i', input_file,
+        strainline_exe,
+        '-i', input_fastq,
         '-o', output_dir,
         '-p', platform,
         '--minTrimmedLen', str(mintrimlen),
@@ -114,13 +109,10 @@ def strainline(
         '--maxCO', str(maxco),
         '--minAbun', str(min_abun),
         '--rmMisassembly', str(rm_mis_asm),
-        '--correctErr', str(err_cor).lower(),
+        '--correctErr', str(err_cor),
         '--threads', str(threads)
     ]
     process = run_command_with_logging(cmd)
-    if process.returncode != 0:
-        logger.error('Strainline exited with code: %d', process.returncode)
-        sys.exit(process.returncode)
     if clean_up:
         logger.info('Removing intermediate files.')
         to_remove = [
@@ -179,13 +171,13 @@ class BLAST:
             '-blastdb_version', '5',
         ]
         logger.debug('Creating database %s', dbtitle)
-        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-            stdout, stderr = process.communicate()
-            if stdout:
-                logger.debug(stdout.decode())
-            if stderr:
-                logger.warning(stderr.decode())
-            return process.returncode
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        if stdout:
+            logger.debug(stdout.decode())
+        if stderr:
+            logger.warning(stderr.decode())
+        return process.returncode
 
     @classmethod
     def accession_to_db(cls, dbtitle: str, accession_list: list[str] | tuple[str], dbtype: str):
@@ -286,8 +278,7 @@ class BLAST:
             '''
             df_copy = self.data.copy()
             # sort by bitscore, grouped by `qseqid` and get top `n` records from each group.
-            sorted_df = df_copy.sort_values('bitscore', ascending=False)
-            sorted_df = sorted_df.groupby('qseqid').head(num) # type: ignore
+            sorted_df = df_copy.sort_values('bitscore', ascending=False).groupby('qseqid').head(num)
             # Sort again by the original index in order to group the same group togeather.
             sorted_df = sorted_df.reset_index().sort_values('index')
             # Drop the original index.
@@ -318,28 +309,24 @@ class BLAST:
                 `specific_records = get_iden('my_qseqid')`
             '''
             df_copy = self.data.copy()
-            res = df_copy.loc[
-                df_copy.reset_index().groupby(['qseqid'])['bitscore'].idxmax()
-            ] # type: ignore
+            res = df_copy.loc[df_copy.reset_index().groupby(['qseqid'])['bitscore'].idxmax()]
             if qseqid:
                 return res.loc[res['qseqid'] == qseqid].reset_index(drop=True)
             return res.reset_index(drop=True)
 
-def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='bam') -> int:
+def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='sam') -> int:
     fmt = fmt.lower()
     match fmt:
         case 'bam':
             cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as alignment:
-                with subprocess.Popen(['samtools', 'sort', '-o', output], stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) as process:
-                    return_code = process.wait()
+                with subprocess.Popen(' '.join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) as process:
+                    _, _ = process.communicate()
         case 'sam':
-            with open(output, 'w', encoding='utf-8') as file:
-                cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
-                with subprocess.Popen(cmd, stdout=file, stderr=subprocess.PIPE) as process:
-                    return_code = process.wait()
+            cmd = [settings['softwares']['minimap2'], '-o', output, '-ax', platform, reference, input_reads]
+            process = subprocess.run(cmd, check=True)
         case _: raise ValueError(f'Incorrect output format, {fmt}. (Only sam or bam is allowed)')
-    return return_code
+    return process.returncode
 
 def snippy(
         input_file, input_reference, input_type,
