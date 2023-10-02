@@ -130,7 +130,7 @@ def log_resource_usage(interval=0.1, output_file='resource_usage_log.csv'):
                                 if grandchild.is_running():
                                     ps_cpu_usage += grandchild.cpu_percent(interval=interval)
                                     ps_threads_usage += grandchild.num_threads()
-                                    ps_memory_usage += child.memory_full_info().rss
+                                    ps_memory_usage += grandchild.memory_info().rss
                                     _io = child.io_counters()
                                     ps_disk_read += _io.read_bytes
                                     ps_disk_write += _io.write_bytes
