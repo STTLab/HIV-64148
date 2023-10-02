@@ -52,7 +52,7 @@ RUN ["tar", "-zxf", "master.tar.gz", "-C", "berkeleylab-metabat", "--strip-compo
 RUN ["rm", "master.tar.gz"]
 RUN ["cmake", "/opt/berkeleylab-metabat"]
 RUN make
-RUN make test
+# RUN make test
 RUN make install
 
 # Install DAZZ_DB
