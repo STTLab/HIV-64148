@@ -17,7 +17,7 @@ from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
-from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf, flye
+from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf, flye, igda
 from utilities.benchmark_utils import log_resource_usage
 
 class Worker(object):
@@ -112,6 +112,12 @@ class Worker(object):
             case 'flye':
                 flye(
                     self._input_fastq,
+                    self.output_dir
+                )
+            case 'igda':
+                igda(
+                    self._input_fastq,
+                    '/hiv64148/data/igda_NC_001802-1_HIV1_reference.fasta',
                     self.output_dir
                 )
             case _:

@@ -122,3 +122,46 @@ def reformat_flye_output(haplotype_fa, output):
         reformatted.append(seq)
     SeqIO.write(reformatted, output, 'fasta')
     return
+
+def igda(input_fastq, reference, output_dir, threads=cpu_count()):
+    context_model = '/hiv64148/data/igda_contextmodel/ont/ont_context_effect_read_qv_8_base_qv_8'
+    with TemporaryDirectory() as _tmpdir:
+        alignment_file = f'{_tmpdir}/alignment.sam'
+        preprocessed_alignment_file = f'{_tmpdir}/cleaned_alignment.sam'
+        preprocessed_alignment_bam = f'{_tmpdir}/cleaned_alignment.bam'
+        minimap2(input_fastq, reference, alignment_file)
+        subprocess.run(
+            [
+                'micromamba', 'run', '-n', 'igda',
+                'igda_align_ont', alignment_file, reference,
+                preprocessed_alignment_file, str(threads)
+            ],
+            check=True
+        )
+        subprocess.run(
+            [
+                'micromamba', 'run', '-n', 'igda',
+                'sam2bam', preprocessed_alignment_file, str(threads)
+            ],
+            check=True
+        )
+        subprocess.run(
+            [
+                'micromamba', 'run', '-n', 'igda',
+                'igda_pipe_detect', '-m', 'ont', '-n', str(threads),
+                preprocessed_alignment_bam, reference, context_model,
+                f'{_tmpdir}/minor_snvs'
+            ],
+            check=True
+        )
+        process = subprocess.run(
+            [
+                'micromamba', 'run', '-n', 'igda',
+                'igda_pipe_phase', '-m', 'ont', '-n', str(threads),
+                f'{_tmpdir}/minor_snvs', reference,
+                f'{_tmpdir}/phased_snvs'
+            ],
+            check=True
+            )
+        reformat_goldrush(f'{_tmpdir}/phased_snvs/contigs.fa', f'{output_dir}/haplotypes.final.fa')
+        return process.returncode
