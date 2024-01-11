@@ -175,7 +175,10 @@ class Worker(object):
 
         gql = open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql').read()
         seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
-        hivdb_result = hivdb_seq_analysis(seqs, gql)
+        try:
+            hivdb_result = hivdb_seq_analysis(seqs, gql)
+        except ConnectionError:
+            hivdb_result = None
 
         logger.info('Generating report')
         match self.handler:
