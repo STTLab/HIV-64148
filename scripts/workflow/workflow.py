@@ -1,4 +1,3 @@
-
 import os
 import sys
 import glob
@@ -17,7 +16,7 @@ from utilities.file_handler import FASTA
 from .components import BLAST, strainline, snippy, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
-from tests.alternative_tools import rvhaplo, reformat_rvhaplo, goldrush, haplodmf, flye, igda
+from tests.alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
 from utilities.benchmark_utils import log_resource_usage
 
 class Worker(object):
@@ -93,10 +92,6 @@ class Worker(object):
                     '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
                     self.output_dir,
                 )
-                reformat_rvhaplo(
-                    f'{self.output_dir}/rvhaplo/rvhaplo_consensus.fasta',
-                    f'{self.output_dir}/haplotypes.final.fa'
-                )
                 logger.info('Finished - RVHaplo')
             case 'haplodmf':
                 haplodmf(
@@ -120,6 +115,11 @@ class Worker(object):
                     '/hiv64148/data/igda_NC_001802-1_HIV1_reference.fasta',
                     self.output_dir
                 )
+            case 'canu':
+                canu(
+                    self._input_fastq,
+                    self.output_dir
+                )
             case _:
                 # Strainline
                 with TemporaryDirectory() as _tmpdir:
@@ -127,6 +127,7 @@ class Worker(object):
                     strainline(
                         input_fastq=f'{_tmpdir}/raw_reads.fastq',
                         output_dir=_tmpdir,
+                        # platform='pb'
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
                     for file in glob.glob(f'{_tmpdir}/*'):
