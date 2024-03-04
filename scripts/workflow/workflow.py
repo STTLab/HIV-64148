@@ -13,7 +13,7 @@ from sierrapy.sierraclient import Sequence
 from utilities.logger import logger
 from utilities.settings import settings
 from utilities.file_handler import FASTA
-from .components import BLAST, strainline, snippy, nanoplot_qc
+from .components import BLAST, strainline, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
 from tests.alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
@@ -151,34 +151,6 @@ class Worker(object):
         _, _peak = tracemalloc.get_traced_memory()
         self._stat['peak_mem']['blast'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
-
-        logger.info('Perform variant calling...')
-        # Extract sequence according to BLAST result
-        blast_result = BLAST.BLASTResult.read(blast['output']['blast_result']).get_iden()[['qseqid', 'sseqid']].to_numpy()
-        haplotype_seqs = FASTA.read(f'{self.output_dir}/haplotypes.final.fa')
-        rep_seqs = FASTA.read(settings['data']['variant_calling']['rep_fasta'])
-        rep_ids = settings['data']['variant_calling']['rep_ids']
-        os.mkdir(f'{self.output_dir}/variants')
-        for hap, iden in blast_result:
-            with TemporaryDirectory() as _temp:
-                seq = haplotype_seqs.extract(hap)
-                SeqIO.write(seq, f'{_temp}/{hap}.fasta', 'fasta')
-                subtype = BLAST.get_subtypes(settings['data']['blast']['dbtitle'], iden)
-                logger.info('Haplotype %s identified as %s, %s', hap, iden, subtype)
-                rep_seqs.extract(rep_ids[subtype], save_to=f'{_temp}/{subtype}.fasta')
-                snippy(
-                    input_file=f'{_temp}/{hap}.fasta',
-                    input_reference=f'{_temp}/{subtype}.fasta',
-                    input_type='contigs',
-                    output_dir=f'{self.output_dir}/variants/{hap}_vs_{subtype}',
-                    tmp_dir=_temp
-                )
-        logger.info('Finished - Variant calling')
-
-        # Log memory
-        _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem']['snippy'] = round(_peak/(1024^2),3) # Memory Mib
-        tracemalloc.stop()
 
         gql = open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql').read()
         seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
