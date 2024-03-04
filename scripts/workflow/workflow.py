@@ -1,23 +1,29 @@
+'''
+This module controlls the workflow of HIV-64148 assembly pipeline
+'''
+__all__ = ['Worker',]
+__version__ = '0.1'
+__author__ = 'Sara Wattanasombat'
+
 import os
 import sys
 import glob
 import time
 import shutil
 import tracemalloc
-from Bio import SeqIO
 from pathlib import Path
 from uuid import uuid4, UUID
 from datetime import timedelta
 from tempfile import TemporaryDirectory
+from Bio import SeqIO
 from sierrapy.sierraclient import Sequence
 from utilities.logger import logger
 from utilities.settings import settings
-from utilities.file_handler import FASTA
-from .components import BLAST, strainline, nanoplot_qc
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
-from tests.alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
 from utilities.benchmark_utils import log_resource_usage
+from tests.alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
+from .components import BLAST, strainline, nanoplot_qc
 
 class Worker(object):
 
@@ -29,6 +35,14 @@ class Worker(object):
             'peak_mem': {}
         }
         self.additionals = additionals
+        self.make_report = True
+        self.output_dir = ''
+        self.job_id = uuid4()
+        self._input_fastq = ''
+        self.reference = None
+
+    def set_reference(self, reference_path):
+        self.reference = reference_path
 
     def get_peak_mem(self) -> dict:
         return self._stat.get('peak_mem', {})
@@ -36,11 +50,10 @@ class Worker(object):
     def get_runtime(self):
         return timedelta(seconds=time.time() - self._stat.get('t_start', time.time()))
 
-    def assign_job(self, input_fastq, output_dir, overwrite=False) -> UUID | None:
+    def assign_job(self, input_fastq, output_dir, overwrite=False, ) -> UUID | None:
         '''
         Assign a job to a worker with provided parameters.
         '''
-        self.job_id = uuid4()
         self._input_fastq = input_fastq
         if os.path.exists(output_dir):
             if overwrite:
@@ -48,6 +61,7 @@ class Worker(object):
                 os.makedirs(output_dir)
                 os.makedirs(f'{output_dir}/logging')
             else:
+                logger.info('Directory existed at %s. Please allow overwrite with --overwrite to proceed.', output_dir)
                 sys.exit(73)
         self.output_dir = output_dir
         return self.job_id
@@ -59,7 +73,8 @@ class Worker(object):
         fq = input('Path to FASTQ: ')
         od = input('Output directory: ')
         if os.path.exists(od):
-            if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y': return
+            if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y':
+                return
             shutil.rmtree(od)
         return self.assign_job(fq, od, True)
 
@@ -74,7 +89,7 @@ class Worker(object):
                 return
         return nanoplot_qc(input_file, input_type, output_dir)
 
-    @log_resource_usage(interval=0.1, output_file=f"resource_usage_log.csv")
+    @log_resource_usage(interval=0.1, output_file="resource_usage_log.csv")
     def run_workflow(self):
         tracemalloc.start()
         self._stat['t_start'] = time.time()
@@ -89,37 +104,41 @@ class Worker(object):
                 # RVHaplo
                 rvhaplo(
                     self._input_fastq,
-                    '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
+                    self.reference,
                     self.output_dir,
                 )
                 logger.info('Finished - RVHaplo')
             case 'haplodmf':
                 haplodmf(
                     self._input_fastq,
-                    '/hiv64148/data/NC_001802-1_HIV1_reference.fasta',
+                    self.reference,
                     self.output_dir,
                 )
+                logger.info('Finished - HaploDMF')
             case 'goldrush':
                 goldrush(
                     self._input_fastq,
                     self.output_dir
                 )
-            case 'flye':
+            case 'metaflye':
                 flye(
                     self._input_fastq,
                     self.output_dir
                 )
+                logger.info('Finished - MetaFlye')
             case 'igda':
                 igda(
                     self._input_fastq,
-                    '/hiv64148/data/igda_NC_001802-1_HIV1_reference.fasta',
+                    self.reference,
                     self.output_dir
                 )
+                logger.info('Finished - iGDA')
             case 'canu':
                 canu(
                     self._input_fastq,
                     self.output_dir
                 )
+                logger.info('Finished - Canu')
             case _:
                 # Strainline
                 with TemporaryDirectory() as _tmpdir:
@@ -127,7 +146,6 @@ class Worker(object):
                     strainline(
                         input_fastq=f'{_tmpdir}/raw_reads.fastq',
                         output_dir=_tmpdir,
-                        # platform='pb'
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
                     for file in glob.glob(f'{_tmpdir}/*'):
@@ -152,45 +170,29 @@ class Worker(object):
         self._stat['peak_mem']['blast'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
 
-        gql = open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql').read()
-        seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
-        try:
-            hivdb_result = hivdb_seq_analysis(seqs, gql)
-        except ConnectionError:
-            hivdb_result = None
+        if self.make_report:
+            with open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql', 'r', encoding='utf-8') as gql_schema:
+                gql = gql_schema.read()
+            seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
+            try:
+                hivdb_result = hivdb_seq_analysis(seqs, gql)
+            except ConnectionError:
+                hivdb_result = None
 
-        logger.info('Generating report')
-        match self.handler:
-            case 'Simulator':
-                report_ctx = context_builder.context_builder(
-                    haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
-                    nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
-                    worker_info={
-                        'job_id': self.job_id,
-                        'run_stats':{
-                            'runtime': self.get_runtime(),
-                            'blast_result': blast['output']['blast_result'],
-                            'peak_mem': self.get_peak_mem()
-                        }
-                    },
-                    hivdb_result=hivdb_result,
-                    simulation_data=self.additionals
-                )
-            case _:
-                report_ctx = context_builder.context_builder(
-                    haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
-                    nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
-                    worker_info={
-                        'job_id': self.job_id,
-                        'run_stats':{
-                            'reconstructor': self.reconstructor,
-                            'runtime': self.get_runtime(),
-                            'blast_result': blast['output']['blast_result'],
-                            'peak_mem': self.get_peak_mem()
-                        }
-                    },
-                    hivdb_result=hivdb_result
-                )
-
-        report_randerer.render_report(report_ctx, f'{self.output_dir}/hiv-64148_report.html')
+            logger.info('Generating report')
+            report_ctx = context_builder.context_builder(
+                haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
+                nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
+                worker_info={
+                    'job_id': self.job_id,
+                    'run_stats':{
+                        'reconstructor': self.reconstructor,
+                        'runtime': self.get_runtime(),
+                        'blast_result': blast['output']['blast_result'],
+                        'peak_mem': self.get_peak_mem()
+                    }
+                },
+                hivdb_result=hivdb_result
+            )
+            report_randerer.render_report(report_ctx, f'{self.output_dir}/hiv-64148_report.html')
         return None
