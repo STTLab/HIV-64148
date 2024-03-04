@@ -78,14 +78,9 @@ ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}"
 WORKDIR /micromamba
 RUN apt-get install -y curl
 RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/1.4.1 | tar -xvj bin/micromamba
-# RUN ["./bin/micromamba", "shell", "init", "-s", "bash", "-p", "/micromamba"]
+
 RUN ["micromamba", "--version"]
-
-# Install Snippy
 RUN ["micromamba", "create", "-n", "venv"]
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "snippy==4.6.0"]
-# RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-y", "snpeff==4.5covid19"]
-
 # Install BLAST+
 RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y","blast"]
 
@@ -101,6 +96,7 @@ RUN apt-get remove -y build-essential
 
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
+COPY ./data /hiv64148/data
 
 RUN ["ln", "-fs", "/opt/Strainline/src/*", "/usr/local/bin/"]
 
