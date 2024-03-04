@@ -22,7 +22,7 @@ from utilities.settings import settings
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
 from utilities.benchmark_utils import log_resource_usage
-from tests.alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
+from .alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
 from .components import BLAST, strainline, nanoplot_qc
 
 class Worker(object):
