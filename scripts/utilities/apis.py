@@ -2,24 +2,18 @@
 import multiprocessing
 from io import StringIO
 from uuid import uuid4
-from Bio import SeqIO
+import json
 import pandas as pd
 import requests
 from sierrapy import SierraClient
 from sierrapy.sierraclient import Sequence
-import json
-from functools import lru_cache
+from Bio import SeqIO
 from utilities.logger import logger
-from utilities.settings import secrets
 
 class EutilsNCBI:
 
-    API_KEY = secrets.get('API_KEYS', {}).get('NCBI', '____YOUR_KEY____')
     END_POINT = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils'
     RATE_LIMIT = 3
-
-    if API_KEY != '____YOUR_KEY____':
-        RATE_LIMIT = 8
 
     def __init__(self) -> None:
         pass
@@ -32,7 +26,6 @@ class EutilsNCBI:
             'retmode': 'fasta',
             'rettype': 'fasta'
         }
-        if cls.API_KEY != '____YOUR_KEY____': params['api_key'] = cls.API_KEY
         logger.debug('Fetching sequence %s', accession)
         res = requests.get(f'{cls.END_POINT}/efetch.fcgi', params=params, timeout=10)
         seq = SeqIO.read(StringIO(res.content.decode()), 'fasta')
@@ -65,9 +58,6 @@ class EutilsNCBI:
             'id': accession,
             'retmode': 'json'
         }
-        if cls.API_KEY != '____YOUR_KEY____':
-            params['api_key'] = cls.API_KEY
-        else: logger.info('NCBI key not setup. Please input your key to increase API limit.')
         logger.debug('Fetching summary for accession number: %s', accession)
         res = requests.get(f'{cls.END_POINT}/esummary.fcgi', params=params)
         try:
