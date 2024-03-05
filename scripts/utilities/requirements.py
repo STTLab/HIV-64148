@@ -1,7 +1,8 @@
-
+'''
+'''
 import glob
-import os, sys
-import requests
+import os
+import sys
 import subprocess
 from pathlib import Path
 from workflow.components import BLAST
@@ -32,10 +33,11 @@ def check_softwares():
                 shell = subprocess.Popen(
                     cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
                 )
-                output, error = shell.communicate()
+                _, error = shell.communicate()
                 if error:
                     logger.warning(error.decode())
-                else: logger.debug(f'{prog} {command} - {return_code(shell.returncode)}')
+                else:
+                    logger.debug('%s %s - %s', prog, command, return_code(shell.returncode))
                 result[f'{prog}_{command}'] = shell.returncode
             continue
         else:
@@ -43,7 +45,7 @@ def check_softwares():
             shell = subprocess.Popen(
                 cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
             )
-            output, error = shell.communicate()
+            _, error = shell.communicate()
             if error:
                 logger.warning(error.decode())
             else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
@@ -53,13 +55,13 @@ def check_softwares():
 def check_init_files():
     # Check BLAST DB
     db_path = settings['data']['blast']['db_dir']
-    if os.path.exists(db_path): logger.info(f'Found BLAST database directory at {db_path}')
-    else: logger.warning(f'BLAST database not found at {db_path}')
+    if os.path.exists(db_path): logger.info('Found BLAST database directory at %s', db_path)
+    else: logger.warning('BLAST database not found at %s', db_path)
 
     # Check representative sequences
     rep_fasta = settings['data']['variant_calling']['rep_fasta']
-    if os.path.exists(rep_fasta): logger.info(f'Found HIV-1 representative sequences at {rep_fasta}')
-    else: logger.warning(f'HIV-1 representative sequences not found at {rep_fasta}')
+    if os.path.exists(rep_fasta): logger.info('Found HIV-1 representative sequences at %s', rep_fasta)
+    else: logger.warning('HIV-1 representative sequences not found at %s', rep_fasta)
 
     return (os.path.exists(db_path), os.path.exists(rep_fasta))
 
@@ -88,9 +90,8 @@ def setup_workflow():
     # for subtype, rep_ids in rep_ids.items():
     EutilsNCBI.fetch_fasta_parallel(rep_ids.values(), save_to=rep_fasta)
     logger.info('Downloading LosAlamos HIV-1 sequences.')
-    response = requests.get('https://storage.googleapis.com/open-to-plublic/hiv_db_LosAlamos_FullGenome_utf8.fasta', allow_redirects=True)
+
     os.makedirs(settings['data']['blast']['db_dir'], exist_ok=True)
-    with open(f"{settings['data']['blast']['db_dir']}/{settings['data']['blast']['dbtitle']}", 'wb') as file:
-        file.write(response.content)
+
     logger.info('Creating database...')
     BLAST.create_db(settings['data']['blast']['dbtitle'], f"{settings['data']['blast']['db_dir']}/{settings['data']['blast']['dbtitle']}", 'nucl')

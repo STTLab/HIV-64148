@@ -27,14 +27,14 @@ from .components import BLAST, strainline, nanoplot_qc
 
 class Worker(object):
 
-    def __init__(self, handler=None, additionals=None, reconstructor='strainline') -> None:
+    def __init__(self, handler=None, rcon_args=None, reconstructor='strainline') -> None:
         self.handler = handler
         self.reconstructor = reconstructor
         self._stat = {
             't_created': time.time(),
             'peak_mem': {}
         }
-        self.additionals = additionals
+        self.rcon_args = rcon_args
         self.make_report = True
         self.output_dir = ''
         self.job_id = uuid4()
@@ -47,8 +47,11 @@ class Worker(object):
     def get_peak_mem(self) -> dict:
         return self._stat.get('peak_mem', {})
 
-    def get_runtime(self):
-        return timedelta(seconds=time.time() - self._stat.get('t_start', time.time()))
+    def get_runtime(self) -> int:
+        '''
+        Return runtime for this worker in seconds.
+        '''
+        return timedelta(seconds=time.time() - self._stat.get('t_start', time.time())).seconds
 
     def assign_job(self, input_fastq, output_dir, overwrite=False, ) -> UUID | None:
         '''
@@ -59,9 +62,8 @@ class Worker(object):
             if overwrite:
                 shutil.rmtree(output_dir)
                 os.makedirs(output_dir)
-                os.makedirs(f'{output_dir}/logging')
             else:
-                logger.info('Directory existed at %s. Please allow overwrite with --overwrite to proceed.', output_dir)
+                logger.info('Directory existed at %s. Overwrite with --overwrite', output_dir)
                 sys.exit(73)
         self.output_dir = output_dir
         return self.job_id
@@ -74,7 +76,7 @@ class Worker(object):
         od = input('Output directory: ')
         if os.path.exists(od):
             if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y':
-                return
+                return None
             shutil.rmtree(od)
         return self.assign_job(fq, od, True)
 

@@ -86,21 +86,23 @@ def flye(input_fastq, output_dir, threads=cpu_count(), **kwargs):
     min_overlap = kwargs.get('min_overlap', 1000)
     read_error = kwargs.get('read_error', 0.0)
     keep_haplotypes = kwargs.get('keep_haplotypes', True)
+    metagenomic_mode = kwargs.get('metagenomic_mode', True)
 
     with TemporaryDirectory() as _tmpdir:
         raw_reads = f'{_tmpdir}/raw_reads.fastq'
         os.symlink(input_fastq, raw_reads)
         cmd = [
-            'micromamba', 'run', '-n', 'flye',
+            'micromamba', 'run', '-n', 'venv',
             'flye', '--nano-hq', raw_reads,
-            # '--genome-size', '10k',
+            '--genome-size', '10k',
             '--min-overlap', str(min_overlap),
             '--read-error', str(read_error),
             '--threads', str(threads),
             '--out-dir', _tmpdir,
-            '--meta',
             '--scaffold'
         ]
+        if metagenomic_mode:
+            cmd.append('--meta')
         if keep_haplotypes:
             cmd.append('--keep-haplotypes')
         process = subprocess.run(cmd, check=True)

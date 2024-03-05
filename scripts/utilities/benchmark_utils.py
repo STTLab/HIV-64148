@@ -6,9 +6,9 @@ Submodule: benchmark_utils
 This module provides utility functions for benchmarking algorithms and measuring resource usage.
 
 Author: Sara Wattanasombat (Faculty of Medicine, Chiang Mai University, Thailand)
-Version: 1.0
+Version: 0.1
 Date Created: June 3, 2023
-Last Updated: June 3, 2023
+Last Updated: March 6, 2024
 
 The module includes the following functions:
 
@@ -184,7 +184,7 @@ def log_resource_usage(interval=0.1, output_file='resource_usage_log.csv'):
                         'BG Memory Usage (kilobytes)', 'BG Disk Read (bytes)',
                         'BG Disk Write (bytes)'
                     ],
-                ).to_csv(f'{self.output_dir}/{output_file}', index=False) # Save the DataFrame to a CSV file
+                ).to_csv(f'{self.output_dir}/{output_file}', index=False)
 
             return result
 

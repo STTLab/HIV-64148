@@ -12,4 +12,5 @@ for p in allow_settings:
             settings = dict(json.load(f))
         break
 
-if SETTINGS is None: raise FileExistsError('Cannot find settings.json')
+if SETTINGS is None:
+    raise FileExistsError('Cannot find settings.json')
