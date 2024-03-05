@@ -1,47 +1,63 @@
 FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install -y apt-utils
-RUN apt-get install -y wget
-RUN apt-get install -y unzip
-RUN apt-get install -y nano
-RUN apt-get install -y python3-pip python-is-python3
-
-# Install Git
-RUN apt-get install -y git
-
-# Install mamba
-WORKDIR /micromamba
-RUN apt-get install -y curl
-RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/1.4.1 | tar -xvj bin/micromamba
-# RUN ["./bin/micromamba", "shell", "init", "-s", "bash", "-p", "/micromamba"]
-ENV MAMBA_ROOT_PREFIX="/micromamba/bin/"
-ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}:/opt/Strainline/src/"
-RUN ["micromamba", "--version"]
-
-# Install Strainline
-WORKDIR /opt
-RUN ["git", "clone", "https://github.com/HaploKit/Strainline.git"]
-RUN ["micromamba", "create", "-n", "venv"]
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "minimap2", "spoa", "samtools", "dazz_db", "daligner", "metabat2"]
+# Update and install essential packages in a single step
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+    apt-utils \
+    build-essential \
+    cmake \
+    zlib1g-dev \
+    libboost-all-dev \
+    libcurl4-openssl-dev \
+    unzip \
+    nano \
+    tabix \
+    python3-pip \
+    python-is-python3 \
+    git \
+    samtools \
+    curl
 
 # Install daccord
 WORKDIR /opt
-RUN ["wget", "https://github.com/gt1/daccord/releases/download/0.0.10-release-20170526170720/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
-RUN ["tar", "-zvxf", "daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
-RUN ["rm", "daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz"]
-RUN ["ln", "-fs", "/opt/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu/bin/daccord", "/micromamba/bin/envs/venv/bin/daccord"]
+RUN curl -LO https://github.com/gt1/daccord/releases/download/0.0.10-release-20170526170720/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz \
+    && tar -xzf daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz \
+    && rm daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu.tar.gz \
+    && ln -fs /opt/daccord-0.0.10-release-20170526170720-x86_64-etch-linux-gnu/bin/daccord /usr/local/bin/daccord
 
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y", "snippy==4.6.0", "blast"]
-RUN ["micromamba", "clean", "--all", "-y"]
+# Install Strainline
+RUN git clone https://github.com/HaploKit/Strainline.git /opt/Strainline
+# Make Strainline scripts executable
+RUN chmod +x /opt/Strainline/src/*
+ENV PATH=/opt/Strainline/src/:$PATH
 
+# Install Micromamba
+WORKDIR /micromamba
+RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/1.4.1 | tar -xvj bin/micromamba -C /usr/local/bin/
+ENV MAMBA_ROOT_PREFIX="/micromamba/bin/"
+ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}"
+RUN ["micromamba", "--version"]
+COPY ./environments ./environments
+# Create environment and install packages using Micromamba
+RUN micromamba create -n venv -y -c conda-forge -c bioconda flye blast nanoplot && \
+    micromamba install -n venv -y -f ./environments/strainline.yaml && \
+    micromamba clean --all -y
+RUN pip install biopython pandas numpy sierrapy jinja2 psutil
+
+COPY ./data/LosAlamos_db.gz /hiv64148/data/blast/db/LosAlamos_db.gz
+RUN gzip -d /hiv64148/data/blast/db/LosAlamos_db.gz && \
+    micromamba run -n venv makeblastdb \
+    -title LosAlamos_db \
+    -dbtype nucl \
+    -in /hiv64148/data/blast/db/LosAlamos_db \
+    -parse_seqids -blastdb_version 5
+
+# Clean up unnecessary packages
+RUN apt-get autoremove -y && apt-get autoclean -y
+
+# Copy scripts, settings, and data
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
-COPY ./requirements.txt /hiv64148/requirements.txt
+WORKDIR /hiv64148/scripts
+RUN chmod +x /hiv64148/scripts/main.py && ln -fs /hiv64148/scripts/main.py /usr/local/bin/hiv64148
 
-RUN ["pip", "install", "-r", "/hiv64148/requirements.txt"]
-
-WORKDIR /workspace
-CMD ["/bin/bash"]

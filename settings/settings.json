@@ -1,8 +1,8 @@
 {
     "softwares": {
-        "strainline"            : "strainline.sh",
+        "strainline"            : "micromamba run -n venv strainline.sh",
         "minimap2"              : "minimap2",
-        "NanoPlot"              : "micromamba run -n nanoplot NanoPlot",
+        "NanoPlot"              : "micromamba run -n venv NanoPlot",
         "blast"                 : {
                                     "blastn" : "micromamba run -n venv blastn",
                                     "makedb" : "micromamba run -n venv makeblastdb"
