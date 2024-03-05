@@ -2,17 +2,11 @@
     "softwares": {
         "strainline"            : "strainline.sh",
         "minimap2"              : "minimap2",
-        "snippy"                : "micromamba run -n venv snippy",
         "NanoPlot"              : "micromamba run -n nanoplot NanoPlot",
         "blast"                 : {
                                     "blastn" : "micromamba run -n venv blastn",
                                     "makedb" : "micromamba run -n venv makeblastdb"
-                                  },
-        "nanosim"               : {
-                                    "read_analysis": "micromamba run -n nanosim read_analysis.py",
-                                    "simulator": "micromamba run -n nanosim simulator.py"
                                   }
-
     },
     "general": {
         "logger": { "level": "DEBUG" }
@@ -58,9 +52,6 @@
                 "CRF12_BF": "AF385934.1",
                 "CRF35_A1D": "EF158040.1"
             }
-        },
-        "nanosim": {
-            "model": "tests/pre-trained_models/human_NA12878_DNA_FAB49712_guppy/training"
         }
     }
 }
