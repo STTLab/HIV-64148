@@ -35,23 +35,6 @@
         "blast": {
             "db_dir": "../data/blast/db",
             "dbtitle": "LosAlamos_db"
-        },
-        "variant_calling": {
-            "rep_fasta": "../data/representatives.fasta",
-            "rep_ids": {
-                "subtype_A": "MH705157.1",
-                "subtype_B": "K03455.1",
-                "subtype_C": "AY772699.1",
-                "subtype_D": "KY392769.1",
-                "subtype_F": "AB485658.1",
-                "subtype_F2": "MH705144.1",
-                "subtype_G": "MH705134.1",
-                "CRF01_AE": "AF259954.1",
-                "CRF02_AG": "AB049811.1",
-                "CRF07_BC": "KC503852",
-                "CRF12_BF": "AF385934.1",
-                "CRF35_A1D": "EF158040.1"
-            }
         }
     }
 }
