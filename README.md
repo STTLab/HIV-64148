@@ -60,7 +60,7 @@ docker run \
         --assember canu
 ```
 
-> The created environment is not persistance, if you need to reuse the assembler installed in the container pleae use [`docke exec`](https://docs.docker.com/reference/cli/docker/container/exec/) to execute command on the container.
+> The created environment for non built-in assembler is not persistance, if you need to reuse the assembler installed in the container pleae use [`docke exec`](https://docs.docker.com/reference/cli/docker/container/exec/) to execute command on the container.
 
 ### Customize assembler parameters
 
