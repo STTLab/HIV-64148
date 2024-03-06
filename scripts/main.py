@@ -11,10 +11,9 @@ import sys
 import argparse
 from workflow.workflow import Worker
 from utilities.logger import logger
-from utilities.requirements import setup_workflow
 
 PYTHON_VERSION = sys.version_info
-VERSION = "3.10.6"
+PYTHON_DEV_VERSION = "3.10.6"
 PROGRAM = "HIV64148"
 AUTHOR = "Sara Wattanasombat (Faculty of Medicine, Chiang Mai University, Thailand)"
 CONTACT = "sara_watt@cmu.ac.th"
@@ -50,7 +49,7 @@ def main():
         help='Path to reference genome, required for reference-based assemblers.'
     )
     parser.add_argument(
-        '-rcon', '--reconstructor',
+        '-a', '--assembler',
         type=str,
         required=False,
         choices=(
@@ -61,10 +60,20 @@ def main():
         help='Assembler selection',
     )
     parser.add_argument(
+        '-ag', '--assembler-args',
+        dest='assembler_args',
+        type=str,
+        required=False,
+        help='A quoted string of custom parameters for the selected assembler\n\
+            Requires equal sign (=) after the argument.\n\
+            Example: -ag="--minTrimmedLen 500 --minOvlpLen 1000 -t 8"',
+    )
+    parser.add_argument(
         '--no-report',
+        dest='no_report',
         default=False,
         action=argparse.BooleanOptionalAction,
-        help='Don\'t generate HTML report.'
+        help='Don\'t generate HTML report.',
     )
     parser.add_argument(
         '--overwrite',
@@ -76,12 +85,11 @@ def main():
     args = parser.parse_args()
     match args.function:
         case 'run':
-            worker = Worker(reconstructor=args.reconstructor)
+            worker = Worker(assembler=args.assembler, asm_args=args.assembler_args.split())
+            worker.check_assembler()
             job = worker.assign_job(args.input, args.output_dir, args.overwrite)
             logger.info('Job created (id: %s)', job)
             worker.run_workflow()
-        case 'setup':
-            setup_workflow()
         case _: parser.print_help()
 
 if __name__ == '__main__':

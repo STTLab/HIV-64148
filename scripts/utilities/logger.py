@@ -1,3 +1,9 @@
+'''
+This moule provide logger
+'''
+__all__ = ['logger',]
+__version__ = '0.1'
+__author__ = 'Sara Wattanasombat'
 
 import logging
 from .settings import settings

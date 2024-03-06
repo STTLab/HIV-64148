@@ -20,6 +20,9 @@ Usage:
 Import the module using `import utilities.benchmark_utils` 
 and then access the functions as `utilities.benchmark_utils.function_name`.
 '''
+__all__ = ['stream_output', 'run_command_with_logging', 'log_resource_usage']
+__version__ = '0.1'
+__author__ = 'Sara Wattanasombat'
 
 import sys
 import subprocess
