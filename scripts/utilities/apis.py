@@ -1,3 +1,11 @@
+'''
+HIV-64148  Copyright (C) 2024  Sara Wattanasombat
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it.
+'''
+
+__version__ = '0.1'
+__author__ = 'Sara Wattanasombat'
 
 import multiprocessing
 from io import StringIO

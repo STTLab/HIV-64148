@@ -1,14 +1,9 @@
 '''
-Program: HIV-64148
-Module: utilities
-Submodule: benchmark_utils
+HIV-64148  Copyright (C) 2024  Sara Wattanasombat
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it.
 
 This module provides utility functions for benchmarking algorithms and measuring resource usage.
-
-Author: Sara Wattanasombat (Faculty of Medicine, Chiang Mai University, Thailand)
-Version: 0.1
-Date Created: June 3, 2023
-Last Updated: March 6, 2024
 
 The module includes the following functions:
 
