@@ -3,19 +3,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Update and install essential packages in a single step
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-    apt-utils \
-    build-essential \
-    cmake \
-    zlib1g-dev \
-    libboost-all-dev \
-    libcurl4-openssl-dev \
-    unzip \
-    nano \
-    tabix \
     python3-pip \
     python-is-python3 \
     git \
-    samtools \
     curl
 
 # Install daccord
@@ -39,8 +29,9 @@ ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}"
 RUN ["micromamba", "--version"]
 COPY ./environments ./environments
 # Create environment and install packages using Micromamba
-RUN micromamba create -n venv -y -c conda-forge -c bioconda flye blast nanoplot && \
+RUN micromamba create -n venv -y -c conda-forge -c bioconda flye blast && \
     micromamba install -n venv -y -f ./environments/strainline.yaml && \
+    micromamba install -n venv -y -c conda-forge -c bioconda nanoplot && \
     micromamba clean --all -y
 RUN pip install biopython pandas numpy sierrapy jinja2 psutil
 
