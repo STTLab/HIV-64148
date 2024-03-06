@@ -26,8 +26,8 @@ This pipeline can be download directly from GitHub with `git clone https://githu
 ```shell
 # On host environment
 # Clone the repository
-git clone https://github.com/minaminii/HIV-64148.git
-cd HIV-64148.git
+git clone https://github.com/STTLab/HIV-64148.git
+cd HIV-64148
 # Build a Docker image
 docker build -t hiv64148:latest -f ./docker/Dockerfile .
 # Print help message
@@ -47,12 +47,27 @@ docker run \
         -i /workspace/${YOUR_FASTQ} \
         -o /workspace/${YOUR_OUTPUT}
 ```
+
+#### Running example
+
+An example FASTQ file is provided in the example folder. Please replace `${EXAMPLE_DIR}` with the location of `HIV-64148/example` directory.
+
+```shell
+docker run \
+    -v ${EXAMPLE_DIR}:/workspace \
+    --rm hiv64148:latest \
+    hiv64148 run \
+        -i /workspace/Simulated_x2_Major_subtype_example_1.fastq \
+        -o /workspace/example_output \
+        -a strainline -ag="--minTrimmedLen 500 --minOvlpLen 1000 -t 1"
+```
+
 ### Switching between assemblers
 To swith between differnet assemblers, user have to specify an `-a` or `--assember` argument with the desired assembler of choice `{canu,strainline,goldrush,metaflye,rvhaplo,haplodmf,igda} [default: strainline]`.
 
 ```shell
 docker run \
-    -v ${YOUR_WORK_DIR}:/workspace \
+    -v ./example:/workspace \
     hiv64148:latest \
     hiv64148 run \
         -i /workspace/${YOUR_FASTQ} \
