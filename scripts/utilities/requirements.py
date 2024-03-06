@@ -1,14 +1,11 @@
 '''
 '''
-import glob
 import os
 import sys
 import subprocess
-from pathlib import Path
-from workflow.components import BLAST
 from .settings import settings
 from .logger import logger
-from .apis import EutilsNCBI
+
 
 def return_code(code: int):
     '''
@@ -23,34 +20,38 @@ def return_code(code: int):
         case 127: return 'MISSING'
         case _: return code
 
-def check_softwares():
-    result = {}
-    softwares = settings.get('softwares', {})
-    for prog in softwares.keys():
-        if isinstance(softwares[prog], dict):
-            for command in softwares[prog].keys():
-                cmd = softwares[prog][command] + ' -h'
-                shell = subprocess.Popen(
-                    cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
-                )
-                _, error = shell.communicate()
-                if error:
-                    logger.warning(error.decode())
-                else:
-                    logger.debug('%s %s - %s', prog, command, return_code(shell.returncode))
-                result[f'{prog}_{command}'] = shell.returncode
-            continue
-        else:
-            cmd = softwares[prog] + ' -h'
-            shell = subprocess.Popen(
-                cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
-            )
-            _, error = shell.communicate()
-            if error:
-                logger.warning(error.decode())
-            else: logger.debug(f'{prog} - {return_code(shell.returncode)}')
-            result[prog] = shell.returncode
-    return result
+def check_softwares(executable) -> bool:
+    cmd = executable + ' -h'
+    with subprocess.Popen(
+        cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+    ) as shell:
+        _, error = shell.communicate()
+    if error:
+        logger.warning(error.decode())
+        return False
+    logger.debug('%s (exit: %s)', executable, shell.returncode)
+    return True
+
+def create_env(env_name, env_yaml):
+    logger.debug('Create new environment %s', env_name)
+    cmd = f'micromamba create -n {env_name} -y -f {env_yaml}'
+    with subprocess.Popen(
+        cmd.split(), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+    ) as shell:
+        _, error = shell.communicate()
+    if error:
+        logger.warning(error.decode())
+
+def clone_github_repository(repo_url, destination):
+    '''
+    This function takes the GitHub repository URL and the destination folder
+    where you want to clone the repository as input arguments. 
+    '''
+    try:
+        subprocess.run(['git', 'clone', repo_url, destination], check=True)
+        logger.debug('Repository cloned successfully to %s', destination)
+    except subprocess.CalledProcessError as e:
+        logger.debug('Error cloning repository: %s', e)
 
 def check_init_files():
     # Check BLAST DB
@@ -64,34 +65,3 @@ def check_init_files():
     else: logger.warning('HIV-1 representative sequences not found at %s', rep_fasta)
 
     return (os.path.exists(db_path), os.path.exists(rep_fasta))
-
-def check_requirements(repair: bool=False):
-    '''
-    Check for return code 0 of the required softwares by calling their help command.
-    '''
-    check_softwares()
-    if not all(check_init_files()):
-        logger.warning('Not all required files are present. Attempting to create...')
-        if repair:
-            setup_workflow()
-
-def setup_workflow():
-    for file in glob.glob('/opt/Strainline/src/*'):
-        try:
-            os.symlink(file, '/usr/local/bin', target_is_directory=True)
-        except FileExistsError:
-            pass
-    rep_ids: dict = settings['data']['variant_calling']['rep_ids']
-    rep_fasta = settings['data']['variant_calling']['rep_fasta']
-    if not os.path.exists(rep_fasta):
-        logger.info('Retrieving representative sequences for each HIV-1 subtype.')
-        try: os.makedirs(Path(rep_fasta).parent)
-        except FileExistsError: pass
-    # for subtype, rep_ids in rep_ids.items():
-    EutilsNCBI.fetch_fasta_parallel(rep_ids.values(), save_to=rep_fasta)
-    logger.info('Downloading LosAlamos HIV-1 sequences.')
-
-    os.makedirs(settings['data']['blast']['db_dir'], exist_ok=True)
-
-    logger.info('Creating database...')
-    BLAST.create_db(settings['data']['blast']['dbtitle'], f"{settings['data']['blast']['db_dir']}/{settings['data']['blast']['dbtitle']}", 'nucl')

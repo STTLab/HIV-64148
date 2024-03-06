@@ -71,27 +71,14 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     process = subprocess.run(cmd, check=False)
     return process.returncode
 
-def strainline(input_fastq, output_dir, clean_up = True, **kwargs) -> int:
+def strainline(input_fastq, output_dir, clean_up = True, asm_args=[]) -> int:
     strainline_exe = settings['softwares']['strainline'].split()
     cmd = [
         *strainline_exe,
         '-i', input_fastq,
         '-o', output_dir,
-        '-p', kwargs.get('platform', 'ont'),
-        '--minTrimmedLen', str(kwargs.get('mintrimlen', 1000)),
-        '--topk', str(kwargs.get('topk', 50)),
-        '--minOvlpLen', str(kwargs.get('minoverlap', 1000)),
-        '--minIdentity', str(kwargs.get('miniden', 0.99)),
-        '--minSeedLen', str(kwargs.get('minseedlen', 3000)),
-        '--maxOH', str(kwargs.get('maxoh', 30)),
-        '--iter', str(kwargs.get('iterations', 2)),
-        '--maxGD', str(kwargs.get('maxgd', 0.01)),
-        '--maxLD', str(kwargs.get('maxld', 0.001)),
-        '--maxCO', str(kwargs.get('maxco', 5)),
-        '--minAbun', str(kwargs.get('min_abun'), 0.02),
-        '--rmMisassembly', str(kwargs.get('rm_mis_asm', False)),
-        '--correctErr', str(kwargs.get('err_cor', True)),
-        '--threads', str(kwargs.get('threads', THREADS))
+        '-p', 'ont',
+        *asm_args
     ]
     process = run_command_with_logging(cmd)
     if clean_up:
@@ -299,12 +286,12 @@ def minimap2(input_reads, reference, output, platform: str = 'map-ont', fmt='sam
     fmt = fmt.lower()
     match fmt:
         case 'bam':
-            cmd = [settings['softwares']['minimap2'], '-ax', platform, reference, input_reads]
+            cmd = [*settings['softwares']['minimap2'].split(), '-ax', platform, reference, input_reads]
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as alignment:
                 with subprocess.Popen(' '.join(["samtools", "sort", "-o", output]), stdin=alignment.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE) as process:
                     _, _ = process.communicate()
         case 'sam':
-            cmd = [settings['softwares']['minimap2'], '-o', output, '-ax', platform, reference, input_reads]
+            cmd = [*settings['softwares']['minimap2'].split(), '-o', output, '-ax', platform, reference, input_reads]
             process = subprocess.run(cmd, check=True)
         case _: raise ValueError(f'Incorrect output format, {fmt}. (Only sam or bam is allowed)')
     return process.returncode

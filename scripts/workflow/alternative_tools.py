@@ -1,15 +1,16 @@
-import os,sys
+import os
+import sys
 import re
 import shutil
+from pathlib import Path
 from tempfile import TemporaryDirectory
 import subprocess
 from multiprocessing import cpu_count
 from Bio import SeqIO
-from utilities.settings import settings
 from workflow.components import minimap2
 from utilities.logger import logger
 
-def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', threads=cpu_count()):
+def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', asm_args=[]):
     with TemporaryDirectory() as _tmpdir:
         alignment_file = f'{_tmpdir}/alignment.sam'
         minimap2(input_fastq, reference, alignment_file)
@@ -17,18 +18,21 @@ def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', threads=cpu_co
         process = subprocess.run(
             [
                 'micromamba', 'run', '-n', 'haplodmf',
-                './rvhaplo.sh',
+                'bash', './rvhaplo.sh',
                 '--input', alignment_file,
                 '-r', reference,
                 '--out', f'{_tmpdir}/{prefix}',
                 '--prefix', prefix,
-                '-t', str(threads)
+                *asm_args
             ], check=True)
-        reformat_rvhaplo(f'{_tmpdir}/{prefix}/{prefix}_consensus.fasta', f'{output_dir}/haplotypes.final.fa')
-    os.chdir('/hiv64148/scripts')
+        reformat_rvhaplo(
+            haplotype_fa=f'{_tmpdir}/{prefix}/{prefix}_consensus.fasta',
+            output=f'{output_dir}/haplotypes.final.fa'
+        )
+    os.chdir(f'{Path(__file__).parent.absolute()}/..')
     return process.returncode
 
-def haplodmf(input_fastq, reference, output_dir, prefix='haplodmf', threads=cpu_count()):
+def haplodmf(input_fastq, reference, output_dir, prefix='haplodmf', asm_args=[]):
     logger.debug('Begin reconstruction with HaploDMF')
     with TemporaryDirectory() as _tmpdir:
         alignment_file = f'{_tmpdir}/alignment.sam'
@@ -37,15 +41,18 @@ def haplodmf(input_fastq, reference, output_dir, prefix='haplodmf', threads=cpu_
         process = subprocess.run(
             [
                 'micromamba', 'run', '-n', 'haplodmf',
-                './haplodmf.sh',
+                'bash', './haplodmf.sh',
                 '--input', alignment_file,
                 '-r', reference,
                 '--out', f'{_tmpdir}/{prefix}',
                 '--prefix', prefix,
-                '-t', str(threads)
+                *asm_args
             ], check=True)
-        reformat_rvhaplo(f'{_tmpdir}/{prefix}/{prefix}_consensus.fasta', f'{output_dir}/haplotypes.final.fa')
-    os.chdir('/hiv64148/scripts')
+        reformat_rvhaplo(
+            haplotype_fa=f'{_tmpdir}/{prefix}/{prefix}_consensus.fasta',
+            output=f'{output_dir}/haplotypes.final.fa'
+        )
+    os.chdir(f'{Path(__file__).parent.absolute()}/..')
     return process.returncode
 
 def reformat_rvhaplo(haplotype_fa, output):
@@ -173,7 +180,7 @@ def igda(input_fastq, reference, output_dir, threads=cpu_count()):
         reformat_goldrush(f'{_tmpdir}/phased_snvs/contigs.fa', f'{output_dir}/haplotypes.final.fa')
         return process.returncode
 
-def canu(input_fastq, output_dir, prefix='canu'):
+def canu(input_fastq, output_dir, prefix='canu', asm_args=[]):
     with TemporaryDirectory() as _tmpdir:
         raw_reads = f'{_tmpdir}/raw_reads.fastq'
         os.symlink(input_fastq, raw_reads)
@@ -181,7 +188,7 @@ def canu(input_fastq, output_dir, prefix='canu'):
             'micromamba', 'run', '-n', 'canu',
             'canu', 'genomeSize=9.8k',
             '-p', prefix, '-d', _tmpdir,
-            '-trimmed', '-corrected', '-nanopore', raw_reads
+            *asm_args, '-nanopore', raw_reads
         ]
         process = subprocess.run(cmd, check=True)
         final_assembly = f'{_tmpdir}/{prefix}.contigs.fasta'

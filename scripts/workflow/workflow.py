@@ -22,19 +22,19 @@ from utilities.settings import settings
 from utilities.apis import hivdb_seq_analysis
 from utilities.reporter import report_randerer, context_builder
 from utilities.benchmark_utils import log_resource_usage
+from utilities.requirements import check_softwares, create_env, clone_github_repository
 from .alternative_tools import rvhaplo, goldrush, haplodmf, flye, igda, canu
 from .components import BLAST, strainline, nanoplot_qc
 
 class Worker(object):
 
-    def __init__(self, handler=None, rcon_args=None, reconstructor='strainline') -> None:
-        self.handler = handler
-        self.reconstructor = reconstructor
+    def __init__(self, assembler='strainline', asm_args=None) -> None:
+        self.assembler = assembler
         self._stat = {
             't_created': time.time(),
             'peak_mem': {}
         }
-        self.rcon_args = rcon_args
+        self.asm_args = asm_args
         self.make_report = True
         self.output_dir = ''
         self.job_id = uuid4()
@@ -53,7 +53,7 @@ class Worker(object):
         '''
         return timedelta(seconds=time.time() - self._stat.get('t_start', time.time())).seconds
 
-    def assign_job(self, input_fastq, output_dir, overwrite=False, ) -> UUID | None:
+    def assign_job(self, input_fastq, output_dir, overwrite=False) -> UUID | None:
         '''
         Assign a job to a worker with provided parameters.
         '''
@@ -68,17 +68,21 @@ class Worker(object):
         self.output_dir = output_dir
         return self.job_id
 
-    def assign_job_cli(self):
-        '''
-        Command line interface for creating a job.
-        '''
-        fq = input('Path to FASTQ: ')
-        od = input('Output directory: ')
-        if os.path.exists(od):
-            if input('Output directory existed, overwrite? [y/N]: ').lower() != 'y':
-                return None
-            shutil.rmtree(od)
-        return self.assign_job(fq, od, True)
+    def check_assembler(self):
+        match self.assembler:
+            case 'canu':
+                if not check_softwares('micromamba run -n canu canu'):
+                    create_env('canu', '/micromamba/environments/canu.yaml')
+            case 'rvhaplo':
+                if not os.path.exists('/opt/RVHaplo/rvhaplo.sh'):
+                    clone_github_repository('https://github.com/dhcai21/RVHaplo.git', '/opt/RVHaplo')
+                if not check_softwares('micromamba run -n haplodmf /opt/RVHaplo/rvhaplo.sh'):
+                    create_env('haplodmf', '/micromamba/environments/haplodmf.yaml')
+            case 'haplodmf':
+                if not os.path.exists('/opt/HaploDMF/haplodmf.sh'):
+                    clone_github_repository('https://github.com/dhcai21/HaploDMF.git', '/opt/HaploDMF')
+                if not check_softwares('micromamba run -n haplodmf /opt/HaploDMF/haplodmf.sh'):
+                    create_env('haplodmf', '/micromamba/environments/haplodmf.yaml')
 
     @classmethod
     def run_qc(cls, input_file, output_dir):
@@ -100,14 +104,15 @@ class Worker(object):
             os.makedirs(self.output_dir)
         self.run_qc(self._input_fastq, f'{self.output_dir}/qc')
 
-        # Haplotype reconstruction
-        match self.reconstructor:
+        # Haplotype assembly
+        match self.assembler:
             case 'rvhaplo':
                 # RVHaplo
                 rvhaplo(
                     self._input_fastq,
                     self.reference,
                     self.output_dir,
+                    self.asm_args
                 )
                 logger.info('Finished - RVHaplo')
             case 'haplodmf':
@@ -115,30 +120,35 @@ class Worker(object):
                     self._input_fastq,
                     self.reference,
                     self.output_dir,
+                    self.asm_args
                 )
                 logger.info('Finished - HaploDMF')
             case 'goldrush':
                 goldrush(
                     self._input_fastq,
-                    self.output_dir
+                    self.output_dir,
+                    self.asm_args
                 )
             case 'metaflye':
                 flye(
                     self._input_fastq,
-                    self.output_dir
+                    self.output_dir,
+                    self.asm_args
                 )
                 logger.info('Finished - MetaFlye')
             case 'igda':
                 igda(
                     self._input_fastq,
                     self.reference,
-                    self.output_dir
+                    self.output_dir,
+                    self.asm_args
                 )
                 logger.info('Finished - iGDA')
             case 'canu':
                 canu(
                     self._input_fastq,
-                    self.output_dir
+                    self.output_dir,
+                    self.asm_args
                 )
                 logger.info('Finished - Canu')
             case _:
@@ -148,6 +158,7 @@ class Worker(object):
                     strainline(
                         input_fastq=f'{_tmpdir}/raw_reads.fastq',
                         output_dir=_tmpdir,
+                        asm_args = self.asm_args
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
                     for file in glob.glob(f'{_tmpdir}/*'):
@@ -156,7 +167,7 @@ class Worker(object):
 
         # Log memory
         _, _peak = tracemalloc.get_traced_memory()
-        self._stat['peak_mem'][self.reconstructor] = round(_peak/(1024^2),3) # Memory Mib
+        self._stat['peak_mem'][self.assembler] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
 
         # BLAST
@@ -173,22 +184,27 @@ class Worker(object):
         tracemalloc.reset_peak()
 
         if self.make_report:
-            with open('/hiv64148/scripts/utilities/gql/sequence_analysis.gql', 'r', encoding='utf-8') as gql_schema:
+            logger.info('Generating report')
+            gql_schema_file = f'{Path(__file__).parent.absolute()}/../utilities/gql/sequence_analysis.gql'
+            with open(gql_schema_file, 'r', encoding='utf-8') as gql_schema:
                 gql = gql_schema.read()
-            seqs = [ Sequence(header=record.id, sequence=str(record.seq)) for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta') ]
+            seqs = [
+                        Sequence(header=record.id, sequence=str(record.seq)) \
+                        for record in SeqIO.parse(f'{self.output_dir}/haplotypes.final.fa', 'fasta')
+                    ]
             try:
                 hivdb_result = hivdb_seq_analysis(seqs, gql)
             except ConnectionError:
+                logger.warning('Connection error. Drug resistant profile will not be reported.')
                 hivdb_result = None
 
-            logger.info('Generating report')
             report_ctx = context_builder.context_builder(
                 haplotype_fa=f'{self.output_dir}/haplotypes.final.fa',
                 nanoplot_html=f'qc/{Path(self._input_fastq).stem}_NanoPlot-report.html',
                 worker_info={
                     'job_id': self.job_id,
                     'run_stats':{
-                        'reconstructor': self.reconstructor,
+                        'assembler': self.assembler,
                         'runtime': self.get_runtime(),
                         'blast_result': blast['output']['blast_result'],
                         'peak_mem': self.get_peak_mem()
