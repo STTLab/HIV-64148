@@ -132,8 +132,6 @@ ${output_directory}/
 
 ## Acknowledgement
 
-The authors would like to thank The ERAWAN HPC Service, Chiang Mai University, Thailand, and The Center of Multidisciplinary Technology for Advanced Medicine (CMUTEAM), Faculty of Medicine, Chiang Mai University, Thailand for their supports on computational resources and server. We would like to thank Support the Children Foundation, Chiang Mai, Thailand for financial support. We also would like to thank Yuphin Chromwinya and Somporn Sankonkit of The Immunology Lab, Department of Microbiology, Faculty of Medicine, Chiang Mai University, Thailand for their administrative supports.
-
 This work was supported by the following funding bodies:
 
 - The Health Systems Research Institute (Grant No. 64-148)
