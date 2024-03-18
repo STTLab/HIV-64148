@@ -140,4 +140,4 @@ This work was supported by the following funding bodies:
 
 ## Citation
 
-Wattanasombat S, Tongjai S. Easing Genomic Surveillance: A Comprehensive Performance Evaluation of Long-Read Assemblers Across Multi-Strain Mixture Data of HIV-1 and Other Pathogenic Viruses for the Simplification of a User-Friendly Bioinformatic Pipeline. Life. 2024 Mar;1–25.
+Wattanasombat S, Tongjai S. Easing Genomic Surveillance: A Comprehensive Performance Evaluation of Long-Read Assemblers Across Multi-Strain Mixture Data of HIV-1 and Other Pathogenic Viruses for the Simplification of a User-Friendly Bioinformatic Pipeline. Department of Microbiology, Faculty of Medicine, Chiang Mai University.
