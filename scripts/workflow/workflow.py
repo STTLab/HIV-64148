@@ -72,17 +72,17 @@ class Worker(object):
         match self.assembler:
             case 'canu':
                 if not check_softwares('micromamba run -n canu canu'):
-                    create_env('canu', '/micromamba/environments/canu.yaml')
+                    create_env('canu', '/hiv64148/environments/canu.yaml')
             case 'rvhaplo':
                 if not os.path.exists('/opt/RVHaplo/rvhaplo.sh'):
                     clone_github_repository('https://github.com/dhcai21/RVHaplo.git', '/opt/RVHaplo')
                 if not check_softwares('micromamba run -n haplodmf /opt/RVHaplo/rvhaplo.sh'):
-                    create_env('haplodmf', '/micromamba/environments/haplodmf.yaml')
+                    create_env('haplodmf', '/hiv64148/environments/haplodmf.yaml')
             case 'haplodmf':
                 if not os.path.exists('/opt/HaploDMF/haplodmf.sh'):
                     clone_github_repository('https://github.com/dhcai21/HaploDMF.git', '/opt/HaploDMF')
                 if not check_softwares('micromamba run -n haplodmf /opt/HaploDMF/haplodmf.sh'):
-                    create_env('haplodmf', '/micromamba/environments/haplodmf.yaml')
+                    create_env('haplodmf', '/hiv64148/environments/haplodmf.yaml')
 
     @classmethod
     def run_qc(cls, input_file, output_dir):
@@ -97,6 +97,7 @@ class Worker(object):
 
     @log_resource_usage(interval=0.1, output_file="resource_usage_log.csv")
     def run_workflow(self):
+        self.check_assembler()
         tracemalloc.start()
         self._stat['t_start'] = time.time()
 

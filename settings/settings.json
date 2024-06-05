@@ -2,7 +2,7 @@
     "softwares": {
         "strainline"            : "micromamba run -n venv strainline.sh",
         "minimap2"              : "micromamba run -n venv minimap2",
-        "NanoPlot"              : "micromamba run -n venv NanoPlot",
+        "NanoPlot"              : "micromamba run -n nanoplot NanoPlot",
         "blast"                 : {
                                     "blastn" : "micromamba run -n venv blastn",
                                     "makedb" : "micromamba run -n venv makeblastdb"
@@ -33,7 +33,7 @@
     },
     "data": {
         "blast": {
-            "db_dir": "../data/blast/db",
+            "db_dir": "/hiv64148/data/blast/db",
             "dbtitle": "LosAlamos_db"
         }
     }

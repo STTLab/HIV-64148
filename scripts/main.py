@@ -83,6 +83,7 @@ def main():
         '-ag', '--assembler-args',
         dest='assembler_args',
         type=str,
+        default='',
         required=False,
         help='A quoted string of custom parameters for the selected assembler\n\
             Requires equal sign (=) after the argument.\n\

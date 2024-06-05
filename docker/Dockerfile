@@ -72,7 +72,7 @@ WORKDIR /opt
 RUN ["git", "clone", "https://github.com/HaploKit/Strainline.git"]
 
 ENV MAMBA_ROOT_PREFIX="/micromamba/bin/"
-ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}"
+ENV PATH="${PATH}:/usr/local/bin/:${MAMBA_ROOT_PREFIX}:/opt/Strainline/src/"
 
 # Install mamba
 WORKDIR /micromamba
@@ -82,7 +82,7 @@ RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/1.4.1 | tar -xvj bin
 RUN ["micromamba", "--version"]
 RUN ["micromamba", "create", "-n", "venv"]
 # Install BLAST+
-RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y","blast"]
+RUN ["micromamba", "install", "-n", "venv", "-c", "bioconda", "-c", "conda-forge", "-y","blast", "flye"]
 
 # Install NanoPlot
 RUN ["micromamba", "create", "-n", "nanoplot", "-c", "bioconda", "-c", "conda-forge", "-y", "nanoplot"]
@@ -97,8 +97,11 @@ RUN apt-get remove -y build-essential
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
 COPY ./data /hiv64148/data
+COPY ./environments /hiv64148/environments
 
-RUN ["ln", "-fs", "/opt/Strainline/src/*", "/usr/local/bin/"]
+RUN ["gzip", "-d", "/hiv64148/data/LosAlamos_db.gz"]
+WORKDIR /hiv64148/data/blast/db
+RUN ["micromamba", "run", "-n", "venv", "makeblastdb", "-title", "LosAlamos_db", "-dbtype", "nucl", "-in", "/hiv64148/data/LosAlamos_db", "-parse_seqids", "-blastdb_version", "5"]
 RUN ["chmod", "+x", "/hiv64148/scripts/main.py"]
 RUN ["ln", "-fs", "/hiv64148/scripts/main.py", "/usr/local/bin/hiv64148"]
 

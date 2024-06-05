@@ -12,7 +12,7 @@ from jinja2 import Environment, select_autoescape, FileSystemLoader
 
 def render_report(context, save_to=None):
     env = Environment(
-        loader=FileSystemLoader(searchpath='./utilities/reporter/templates'),
+        loader=FileSystemLoader(searchpath='/hiv64148/scripts/utilities/reporter/templates'),
         autoescape=select_autoescape()
     )
     template = env.get_template('report_template.jinja')

@@ -85,7 +85,7 @@ def reformat_goldrush(haplotype_fa, output):
     SeqIO.write(reformatted, output, 'fasta')
     return
 
-def flye(input_fastq, output_dir, threads=cpu_count(), **kwargs):
+def flye(input_fastq, output_dir, *args, **kwargs):
     '''
     Run de novo haplotype reconstruction with MetaFlye
     '''
@@ -104,7 +104,6 @@ def flye(input_fastq, output_dir, threads=cpu_count(), **kwargs):
             '--genome-size', '10k',
             '--min-overlap', str(min_overlap),
             '--read-error', str(read_error),
-            '--threads', str(threads),
             '--out-dir', _tmpdir,
             '--scaffold'
         ]
