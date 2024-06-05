@@ -89,7 +89,7 @@ RUN ["micromamba", "create", "-n", "nanoplot", "-c", "bioconda", "-c", "conda-fo
 
 RUN ["micromamba", "clean", "--all", "-y"]
 
-RUN ["pip","install", "biopython", "pandas", "numpy"]
+RUN ["pip","install", "biopython", "pandas", "numpy", "psutil"]
 RUN ["pip", "install", "yattag", "sierrapy", "jinja2"]
 
 RUN apt-get remove -y build-essential
@@ -99,6 +99,8 @@ COPY ./settings /hiv64148/settings
 COPY ./data /hiv64148/data
 
 RUN ["ln", "-fs", "/opt/Strainline/src/*", "/usr/local/bin/"]
+RUN ["chmod", "+x", "/hiv64148/scripts/main.py"]
+RUN ["ln", "-fs", "/hiv64148/scripts/main.py", "/usr/local/bin/hiv64148"]
 
 WORKDIR /workspace
 CMD ["/bin/bash"]

@@ -41,8 +41,10 @@ def main():
     '''
     parser = argparse.ArgumentParser(
                 prog='HIV-64148 Pipeline',
-                description='What the program does',
-                epilog='Text at the bottom of help')
+                description='''About HIV-64148, an integration of multiple long-read genome assemblers
+                               with a pipeline for analysis of HIV-1 genomic data from Oxford Nanopore
+                               Sequencing Technology or PacBio Real-Time (SMRT) Sequencing technology.''',
+                epilog='Citing our pipeline use https://doi.org/10.12688/f1000research.149577.1')
     parser.add_argument(
         'function',
         choices=('run', 'report')
@@ -63,6 +65,7 @@ def main():
         '-r', '--reference',
         type=str,
         required=False,
+        default=None,
         help='Path to reference genome, required for reference-based assemblers.'
     )
     parser.add_argument(
@@ -104,6 +107,7 @@ def main():
         case 'run':
             worker = Worker(assembler=args.assembler, asm_args=args.assembler_args.split())
             worker.check_assembler()
+            worker.set_reference(args.reference)
             job = worker.assign_job(args.input, args.output_dir, args.overwrite)
             logger.info('Job created (id: %s)', job)
             worker.run_workflow()
