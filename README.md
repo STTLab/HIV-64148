@@ -21,7 +21,7 @@ Based on our benchmarking study, the following optimal computational requirement
 
 ### Installation
 
-This pipeline can be download directly from GitHub with `git clone https://github.com/minaminii/HIV-64148.git`. It is recommended that you use this pipeline within the provided Docker environment to ensure its functionality. Docker daemon is required for building the environment, it can be downloaded from [Docker website](https://docs.docker.com/get-docker/).
+This pipeline can be download directly from GitHub by clicking on download zip file from this repository page or using git (require git installation) with `git clone https://github.com/minaminii/HIV-64148.git`. It is recommended that you use this pipeline within the provided Docker environment to ensure its functionality. Docker daemon is required for building the environment, it can be downloaded from [Docker website](https://docs.docker.com/get-docker/).
 
 ```shell
 # On host environment
