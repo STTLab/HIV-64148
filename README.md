@@ -21,20 +21,16 @@ Based on our benchmarking study, the following optimal computational requirement
 
 ### Installation
 
-This pipeline can be download directly from GitHub by clicking on download zip file from this repository page or using git (require git installation) with `git clone https://github.com/minaminii/HIV-64148.git`. It is recommended that you use this pipeline within the provided Docker environment to ensure its functionality. Docker daemon is required for building the environment, it can be downloaded from [Docker website](https://docs.docker.com/get-docker/).
+This pipeline can be download directly from Docker registry Docker daemon is required for building the environment, it can be downloaded from [Docker website](https://docs.docker.com/get-docker/).
 
 ```shell
 # On host environment
-# Clone the repository
-git clone https://github.com/STTLab/HIV-64148.git
-cd HIV-64148
-# Build a Docker image
-docker build -t hiv64148:latest -f ./docker/Dockerfile .
+docker pull minamini/hiv64148:latest
 # Print help message
-docker run --rm hiv64148:latest hiv64148 -h
+docker run --rm minamini/hiv64148:latest hiv64148 -h
 ```
 
-> For using with Singulararity user have to build the Docker image and convert it to a Singularity image `singularity build hiv64148.sif docker-daemon://local/hiv64148:latest`
+> For using with Singulararity user have to build the Docker image and convert it to a Singularity image `singularity build hiv64148.sif docker-daemon://local/minamini/hiv64148:latest`
 
 ### Basic
 After the setup is finished, you can attach a local directory to the container and run the pipeline with command `python3 /hiv64148/scripts/main.py run`, with argument `-i` or `--input` as raw reads input in FASTA or FASTQ format; `-o` or `--output_dir` as a path to output directory. 
@@ -42,7 +38,7 @@ After the setup is finished, you can attach a local directory to the container a
 ```shell
 docker run \
     -v ${YOUR_WORK_DIR}:/workspace \
-    --rm hiv64148:latest \
+    --rm minamini/hiv64148:latest \
     hiv64148 run \
         -i /workspace/${YOUR_FASTQ} \
         -o /workspace/${YOUR_OUTPUT}
@@ -55,7 +51,7 @@ An example FASTQ file is provided in the example folder. Please replace `${EXAMP
 ```shell
 docker run \
     -v ${EXAMPLE_DIR}:/workspace \
-    --rm hiv64148:latest \
+    --rm minamini/hiv64148:latest \
     hiv64148 run \
         -i /workspace/Simulated_x2_Major_subtype_example_1.fastq \
         -o /workspace/example_output \
@@ -68,7 +64,7 @@ To swith between differnet assemblers, user have to specify an `-a` or `--assemb
 ```shell
 docker run \
     -v ./example:/workspace \
-    hiv64148:latest \
+    minamini/hiv64148:latest \
     hiv64148 run \
         -i /workspace/${YOUR_FASTQ} \
         -o /workspace/${YOUR_OUTPUT} \
@@ -84,7 +80,7 @@ Customized parameters for each assembler can be pass through with `-ag=` or `--a
 ```shell
 docker run \
     -v ${YOUR_WORK_DIR}:/workspace \
-    hiv64148:latest \
+    minamini/hiv64148:latest \
     hiv64148 run \
         -i /workspace/${YOUR_FASTQ} \
         -o /workspace/${YOUR_OUTPUT} \
