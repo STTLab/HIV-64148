@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from functools import lru_cache
 from multiprocessing import cpu_count
+from typing import Literal
 import pandas as pd
 from Bio import SeqIO
 
@@ -71,7 +72,7 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     process = subprocess.run(cmd, check=False)
     return process.returncode
 
-def strainline(input_fastq, output_dir, clean_up = True, asm_args=[]) -> int:
+def strainline(input_fastq, output_dir, clean_up = True, asm_args:list[str]=[]) -> int:
     strainline_exe = settings['softwares']['strainline'].split()
     cmd = [
         *strainline_exe,
@@ -148,7 +149,12 @@ class BLAST:
         return process.returncode
 
     @classmethod
-    def accession_to_db(cls, dbtitle: str, accession_list: list[str] | tuple[str], dbtype: str):
+    def accession_to_db(
+        cls,
+        dbtitle: str,
+        accession_list: list[str] | tuple[str],
+        dbtype: Literal['nucl', 'prot']
+    ):
         '''
         Create Blast database from a list of accession number(s).
         Fasta sequences will be fetched from NCBI database (requires internet connection).
@@ -161,10 +167,6 @@ class BLAST:
         Returns:
             None
         '''
-        if dbtype not in ('nucl', 'prot'):
-            raise ValueError('Only "nucl" or "prot" is allowed. \
-                            Plese refers to BLAST documentation.')
-
         with tempfile.TemporaryDirectory() as _temp:
             seqs = EutilsNCBI.fetch_fasta_parallel(accession_list)
             SeqIO.write(seqs, f'{_temp}/{dbtitle}', 'fasta')
@@ -174,21 +176,56 @@ class BLAST:
         cls.create_db(dbtitle, f'{cls.db_path}/{dbtitle}', dbtype)
 
     @classmethod
-    def blast_nucleotide(cls, query_fasta, dbtitle, output_dir, threads: str=THREADS) -> dict:
+    def accession_file_to_db(
+        cls,
+        dbtitle: str,
+        accession_file: str | os.PathLike,
+        dbtype: Literal['nucl', 'prot']
+    ) -> None:
+        '''
+        Create Blast database from a file containing line-saperated list of accession number(s).
+        Fasta sequences will be fetched from NCBI database (requires internet connection).
+
+        Parameters:
+            - dbtitle (str): Database title.
+            - accession_file (str): A file containing line-saperated list of accession number(s).
+            - dbtype (str): Database type either "nulc" for nucleotide or "prot" for protein.
+
+        Returns:
+            None
+        '''
+        with open(accession_file, 'r', encoding='utf-8') as ac_file:
+            cls.accession_to_db(dbtitle, ac_file.readlines(), dbtype)
+
+    @classmethod
+    def blast_nucleotide(cls, query_fasta, dbtitle, output_dir, threads: str=THREADS, only_hiv=True) -> dict:
         '''
         Performs Blast analysis on provided sequences based on user-specified database.
+        HIV only is turn on as default which will use the provided internal database,
+        if using non-hiv option we'll use sequence provided in the accession file specified with the
+        -db/--blast_list option otherwise -remote BLAST will be used.
         '''
         if not os.path.exists(cls.db_path):
             raise FileNotFoundError(f'Database {dbtitle} not found in {cls.db_path}.')
         output_file = f'{output_dir}/haplotype.blast.csv'
-        cmd = [
-            *(settings['softwares']['blast']['blastn'].split()),
-            '-db', f'{cls.db_path}/{dbtitle}',
-            '-query', query_fasta,
-            '-out', output_file,
-            '-outfmt', '6',
-            '-num_threads', threads
-        ]
+        if only_hiv:
+            cmd = [
+                *(settings['softwares']['blast']['blastn'].split()),
+                '-db', f'{cls.db_path}/{dbtitle}',
+                '-query', query_fasta,
+                '-out', output_file,
+                '-outfmt', '6',
+                '-num_threads', threads
+            ]
+        else:
+            cmd = [
+                *(settings['softwares']['blast']['blastn'].split()),
+                '-query', query_fasta,
+                '-out', output_file,
+                '-outfmt', '6',
+                '-num_threads', threads,
+                '-remote'
+            ]
         process = run_command_with_logging(cmd)
         return {
             'return_code': process.returncode,

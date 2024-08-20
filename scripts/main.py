@@ -24,10 +24,15 @@ __all__ = ['main',]
 __version__ = '0.1'
 __author__ = 'Sara Wattanasombat'
 
+import os
 import sys
 import argparse
-from workflow.workflow import Worker
+from typing import Literal
 from utilities.logger import logger
+try:
+    from workflow.workflow import Worker
+except ModuleNotFoundError as err:
+    logger.fatal(err)
 
 PYTHON_VERSION = sys.version_info
 PYTHON_DEV_VERSION = "3.10.6"
@@ -42,8 +47,8 @@ def main():
     parser = argparse.ArgumentParser(
                 prog='HIV-64148 Pipeline',
                 description='''About HIV-64148, an integration of multiple long-read genome assemblers
-                               with a pipeline for analysis of HIV-1 genomic data from Oxford Nanopore
-                               Sequencing Technology or PacBio Real-Time (SMRT) Sequencing technology.''',
+                                with a pipeline for analysis of HIV-1 genomic data from Oxford Nanopore
+                                Sequencing Technology or PacBio Real-Time (SMRT) Sequencing technology.''',
                 epilog='Citing our pipeline use https://doi.org/10.12688/f1000research.149577.1')
     parser.add_argument(
         'function',
@@ -103,6 +108,13 @@ def main():
         action=argparse.BooleanOptionalAction,
         help='Force overwrite the output dirtectory. (CANNOT BE RECOVERED)',
     )
+    parser.add_argument(
+        '-db', '--blast_list',
+        type=str,
+        required=False,
+        default=None,
+        help='Path to a file containing line-saperated list of accession number(s)'
+    )
     args = parser.parse_args()
     match args.function:
         case 'run':
@@ -112,7 +124,8 @@ def main():
             job = worker.assign_job(args.input, args.output_dir, args.overwrite)
             logger.info('Job created (id: %s)', job)
             worker.run_workflow()
-        case _: parser.print_help()
+        case _:
+            parser.print_help()
 
 if __name__ == '__main__':
     main()
