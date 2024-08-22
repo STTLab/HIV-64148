@@ -120,7 +120,6 @@ def main():
         type=str,
         default='',
         required=False,
-        # TODO: Change help text as we switched to yaml configuration.
         help='Path to a yaml file for assembler settings.',
     )
     parser.add_argument(
