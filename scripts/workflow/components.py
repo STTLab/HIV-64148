@@ -14,7 +14,7 @@ from Bio import SeqIO
 from utilities.apis import EutilsNCBI
 from utilities.settings import settings
 from utilities.logger import logger
-from utilities.file_handler import FASTA
+from utilities.file_handler import FASTA, args_loader
 from utilities.benchmark_utils import run_command_with_logging
 
 THREADS = str(cpu_count()-1)
@@ -72,15 +72,26 @@ def nanoplot_qc(input_file, input_type, output_dir, **filtering_options) -> int:
     process = subprocess.run(cmd, check=False)
     return process.returncode
 
-def strainline(input_fastq, output_dir, clean_up = True, asm_args:list[str]=[]) -> int:
+def strainline(
+        input_fastq,
+        output_dir,
+        tech:Literal['nanopore', 'pacbio'],
+        clean_up=True,
+        asm_settings: str|os.PathLike=None
+    ) -> int:
     strainline_exe = settings['softwares']['strainline'].split()
     cmd = [
         *strainline_exe,
         '-i', input_fastq,
         '-o', output_dir,
-        '-p', 'ont',
-        *asm_args
     ]
+    if tech == 'nanopore':
+        cmd.extend(['-p', 'ont'])
+    elif tech == 'pacbio':
+        cmd.extend(['-p', 'pb'])
+    if asm_settings:
+        cmd.extend(args_loader(asm_settings, '--'))
+
     process = run_command_with_logging(cmd)
     if clean_up:
         logger.info('Removing intermediate files.')
@@ -136,10 +147,25 @@ class BLAST:
             '-title', dbtitle,
             '-dbtype', dbtype,
             '-in', input_file,
+            '-out', cls.db_path,
             '-parse_seqids',
             '-blastdb_version', '5',
         ]
-        logger.debug('Creating database %s', dbtitle)
+        logger.info('Creating database %s', dbtitle)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        if stdout:
+            logger.debug(stdout.decode())
+        if stderr:
+            logger.warning(stderr.decode())
+        return process.returncode
+
+    @classmethod
+    def check_db(cls, dbtitle) -> bool:
+        '''
+        '''
+        cmd = ['micromamba', 'run', '-n', 'venv', 'blastdbcheck', '-db', f'{cls.db_path}/{dbtitle}']
+        logger.info('Checking database %s', dbtitle)
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
         if stdout:
@@ -198,7 +224,7 @@ class BLAST:
             cls.accession_to_db(dbtitle, ac_file.readlines(), dbtype)
 
     @classmethod
-    def blast_nucleotide(cls, query_fasta, dbtitle, output_dir, threads: str=THREADS, only_hiv=True) -> dict:
+    def blast_nucleotide(cls, query_fasta, dbtitle, output_dir, threads: str=THREADS, local=True) -> dict:
         '''
         Performs Blast analysis on provided sequences based on user-specified database.
         HIV only is turn on as default which will use the provided internal database,
@@ -208,7 +234,7 @@ class BLAST:
         if not os.path.exists(cls.db_path):
             raise FileNotFoundError(f'Database {dbtitle} not found in {cls.db_path}.')
         output_file = f'{output_dir}/haplotype.blast.csv'
-        if only_hiv:
+        if local:
             cmd = [
                 *(settings['softwares']['blast']['blastn'].split()),
                 '-db', f'{cls.db_path}/{dbtitle}',
@@ -241,7 +267,7 @@ class BLAST:
         subtype_regex = re.compile(
             r'CRF[0-9]{2}_[A-Z]{2}|CRF[0-9]{2}_[A-Z][0-9][A-Z]|subtype_[A,B,C,D,F,G][1,2]?'
         )
-        subtype = subtype_regex.findall(iden_seq.description)[0] # pyright: ignore reportGeneralTypeIssues=false
+        subtype = subtype_regex.findall(iden_seq.description)[0]
         return subtype
 
     class BLASTResult(object):

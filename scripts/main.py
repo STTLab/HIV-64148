@@ -21,13 +21,11 @@
 '''
 
 __all__ = ['main',]
-__version__ = '0.1'
+__version__ = '0.2'
 __author__ = 'Sara Wattanasombat'
 
-import os
 import sys
 import argparse
-from typing import Literal
 from utilities.logger import logger
 try:
     from workflow.workflow import Worker
@@ -45,11 +43,15 @@ def main():
     This is the main function for handling command line argument and pipeline execution.
     '''
     parser = argparse.ArgumentParser(
-                prog='HIV-64148 Pipeline',
-                description='''About HIV-64148, an integration of multiple long-read genome assemblers
-                                with a pipeline for analysis of HIV-1 genomic data from Oxford Nanopore
-                                Sequencing Technology or PacBio Real-Time (SMRT) Sequencing technology.''',
-                epilog='Citing our pipeline use https://doi.org/10.12688/f1000research.149577.1')
+                prog='hiv64148',
+                description='About HIV-64148, an integration of multiple long-read genome \
+                            assemblers with a pipeline for analysis of HIV-1 genomic data \
+                            from Oxford Nanopore Sequencing Technology or PacBio Real-Time \
+                            (SMRT) Sequencing technology.',
+                epilog='Citing our pipeline use https://doi.org/10.12688/f1000research.149577.1\n'
+                'along with an appropriate citataion of the selected assembler.',
+                formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument(
         'function',
         choices=('run', 'report')
@@ -67,11 +69,24 @@ def main():
         help='Path to Output directory.'
     )
     parser.add_argument(
-        '-r', '--reference',
+        '-tech', '--tech',
+        dest='tech',
         type=str,
-        required=False,
-        default=None,
-        help='Path to reference genome, required for reference-based assemblers.'
+        choices=('nanopore', 'pacbio'),
+        default='nanopore',
+        help='Technology used to generate the reads. (default: nanopore)'
+    )
+    parser.add_argument(
+        '-qual', '--quality',
+        dest='quality',
+        type=str,
+        choices=('raw', 'corrected', 'hifi', 'hq'),
+        default='raw',
+        help='Expected error rate (default: raw)\n'
+        '- raw: <20%% error\n'
+        '- corrected: <3%% error\n'
+        '- hifi: <1%% error (PacBio only)\n'
+        '- hq: <5%% berror (ONT only, Guppy5+ SUP or Q20)'
     )
     parser.add_argument(
         '-a', '--assembler',
@@ -79,10 +94,25 @@ def main():
         required=False,
         choices=(
             'canu', 'strainline', 'goldrush',
-            'metaflye', 'rvhaplo', 'haplodmf', 'igda'
+            'flye', 'rvhaplo', 'haplodmf', 'igda'
         ),
         default='strainline',
-        help='Assembler selection',
+        help='Assembler selection (default: strainline)',
+    )
+    parser.add_argument(
+        '-r', '--reference',
+        type=str,
+        required=False,
+        default=None,
+        help='Path to reference genome, required for reference-based assemblers.'
+    )
+    parser.add_argument(
+        '-g', '--genome-size',
+        dest='genome_size',
+        type=str,
+        required=False,
+        default=None,
+        help='An estimate of the size of the genome. Requried for running Canu. (default: not set)'
     )
     parser.add_argument(
         '-ag', '--assembler-args',
@@ -90,16 +120,17 @@ def main():
         type=str,
         default='',
         required=False,
+        # TODO: Change help text as we switched to yaml configuration.
         help='A quoted string of custom parameters for the selected assembler\n\
             Requires equal sign (=) after the argument.\n\
             Example: -ag="--minTrimmedLen 500 --minOvlpLen 1000 -t 8"',
     )
     parser.add_argument(
-        '--no-report',
-        dest='no_report',
+        '--non-hiv',
+        dest='non_hiv',
         default=False,
         action=argparse.BooleanOptionalAction,
-        help='Don\'t generate HTML report.',
+        help='This is a non-HIV sequence. HTML report related to HIV will not be generated.',
     )
     parser.add_argument(
         '--overwrite',
@@ -110,17 +141,45 @@ def main():
     )
     parser.add_argument(
         '-db', '--blast_list',
+        dest='db',
         type=str,
         required=False,
-        default=None,
-        help='Path to a file containing line-saperated list of accession number(s)'
+        default='LosAlamos_db',
+        help='Path to a FASTA file containing sequences you wish to use for BLAST'
+        '\nOR `-db remote` if you want to use a remote NCBI BLAST server. (default: LosAlamos_db)'
     )
     args = parser.parse_args()
     match args.function:
         case 'run':
-            worker = Worker(assembler=args.assembler, asm_args=args.assembler_args.split())
+            worker = Worker(
+                assembler=args.assembler,
+                tech=args.tech,
+                quality=args.quality,
+                asm_args=args.assembler_args,
+                kwargs={'non_hiv':args.non_hiv}
+            )
             worker.check_assembler()
-            worker.set_reference(args.reference)
+            if args.reference:
+                worker.set_reference(args.reference)
+            if args.db:
+                if args.non_hiv and args.db == 'LosAlamos_db':
+                    logger.warning('Database not provided for non-HIV sequences, '
+                                    'switch to remote NCBI BLAST server.')
+                    worker.set_blast_db('remote')
+                else:
+                    worker.set_blast_db(args.db)
+            if args.genome_size:
+                worker.set_genome_size(args.genome_size)
+            else:
+                if args.assembler == 'canu':
+                    if args.non_hiv:
+                        logger.critical('Canu requires genome size input.'
+                                        'Please set via -g/--genome-size argument. Example: -g 9.8k'
+                                        )
+                        sys.exit(1)
+                    else:
+                        worker.set_genome_size('9.8k')
+
             job = worker.assign_job(args.input, args.output_dir, args.overwrite)
             logger.info('Job created (id: %s)', job)
             worker.run_workflow()

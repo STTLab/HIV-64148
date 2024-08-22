@@ -1,0 +1,18 @@
+# number of parallel threads (default: 1)
+threads: 1
+# number of polishing iterations (default: 1)
+iterations: 1
+# minimum overlap between reads (default: auto)
+min-overlap: 
+# reduced coverage for initial disjointig assembly (default: not set)
+asm-coverage: 
+# Adjust parameters for given read error rate (as fraction e.g. 0.03) (default: auto)
+read-error: 
+# metagenome / uneven coverage mode - True/False [disabled by default]
+meta: false
+# do not collapse alternative haplotypes [disabled by default]
+keep-haplotypes: false
+# do not output contigs representing alternative haplotypes [disabled by default]
+no-alt-contigs: false
+# enable scaffolding using graph [disabled by default]
+scaffold: false

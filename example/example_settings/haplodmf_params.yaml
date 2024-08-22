@@ -1,0 +1,59 @@
+# Parameters taken from HaploDMF repository as of 2024-08-21
+# Accessible via https://github.com/dhcai21/HaploDMF
+
+# You can modify these values according to your needs and point
+# -ag/--assembler-args argument to this file i.e. -ag <path-to-file>/HaploDMF_params.yaml
+
+# General options
+# A file containing a set of SNV sites. (default:None)
+input_snv:
+# Smallest mapping quality in the alignment file. (default:0)
+map_qual: 0
+# Starting position for reconstructing haplotypes (default: 1)
+start_pos: 1
+# Ending position for reconstructing haplotypes (default: 1e10)
+end_pos: 1e10
+# Filter haplotypes with abundance less than a threshold (default: 0)
+abundance: 0
+
+# SNV Detection
+# Number of CPU cores for multiprocessing. (default:8)
+thread: 8
+# Sequencing error rate. (default: 0.1)
+error_rate: 0.1
+# Significance level for binomial tests. (default: 0.05)
+signi_level: 0.05
+# A threshold of the maximum conditional probability for SNV sites. (default: 0.65)
+cond_pro: 0.65
+# The most dominant base' frequency at a to-be-verified site should >= fre_snv. (default: 0.80)
+fre_snv: 0.80
+# Minimum # of reads for calculating the conditional probability given one conditional site. (default:10)
+num_read_1: 10
+# Minimum # of reads for calculating the conditional probability given more than one conditional sites. (default: 5)
+num_read_2: 5
+# Minimum length of gap between SNV sites for calculating the conditional probability. (default:15)
+gap: 15
+# Minimum # of SNV sites for haplotype construction. (default:20)
+smallest_snv: 20
+
+# DMF Model Training
+# Weight (between 0 and 1) for loss 2. (default:0.2) 
+weight: 0.2
+# Learning rate for DMF. (default:0.001)
+learning_rate: 0.001
+# Epoch for training. (default:20) 
+epoch: 20
+# Batch size for training. (default:1024)
+batch_size: 1024
+
+# Clustering and reconstruction :
+# Algorithm for clustering: Hierarchical(ward) or KMeans. (default:ward) 
+algorithm: 'ward'
+# Depth limitation for consensus sequences generated from clusters. (default:5)
+depth: 5
+# Threshold 1 of edit distance with the increasing number of clusters. (default:0.95)
+cluster_thres1: 0.95
+# Threshold 2 of edit distance with the increasing number of clusters. (default:0.90) 
+cluster_thres2: 0.90
+# Largest iteration for clustering. (default:20)
+largest_iteration: 20
