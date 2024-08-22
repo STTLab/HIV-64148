@@ -90,23 +90,24 @@ RUN ["micromamba", "create", "-n", "nanoplot", "-c", "bioconda", "-c", "conda-fo
 RUN ["micromamba", "clean", "--all", "-y"]
 
 RUN ["pip","install", "biopython", "pandas", "numpy", "psutil"]
-RUN ["pip", "install", "yattag", "sierrapy", "jinja2"]
+RUN ["pip", "install", "yattag", "sierrapy", "jinja2", "PyYAML"]
 
-RUN apt-get remove -y build-essential
+RUN apt-get purge -y build-essential
+RUN apt-get autoremove -y
 
-COPY ./scripts /hiv64148/scripts
-COPY ./settings /hiv64148/settings
+
 COPY ./data /hiv64148/data/blast/db
-COPY ./environments /hiv64148/environments
-
 WORKDIR /hiv64148/data/blast/db
 RUN ["gzip", "-d", "/hiv64148/data/blast/db/LosAlamos_db.gz"]
 RUN ["wget", "ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz"]
 RUN ["tar", "xzf", "taxdb.tar.gz"]
 RUN ["rm", "taxdb.tar.gz"]
-RUN ["micromamba", "run", "-n", "venv", "makeblastdb", "-title", "LosAlamos_db", "-dbtype", "nucl", "-in", "/hiv64148/data/LosAlamos_db", "-parse_seqids", "-blastdb_version", "5"]
+RUN ["micromamba", "run", "-n", "venv", "makeblastdb", "-title", "LosAlamos_db", "-dbtype", "nucl", "-in", "/hiv64148/data/blast/db/LosAlamos_db", "-parse_seqids", "-blastdb_version", "5"]
+
+COPY ./environments /hiv64148/environments
+COPY ./scripts /hiv64148/scripts
+COPY ./settings /hiv64148/settings
 RUN ["chmod", "+x", "/hiv64148/scripts/main.py"]
 RUN ["ln", "-fs", "/hiv64148/scripts/main.py", "/usr/local/bin/hiv64148"]
-
 WORKDIR /workspace
 CMD ["/bin/bash"]
