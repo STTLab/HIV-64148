@@ -96,11 +96,14 @@ RUN apt-get remove -y build-essential
 
 COPY ./scripts /hiv64148/scripts
 COPY ./settings /hiv64148/settings
-COPY ./data /hiv64148/data
+COPY ./data /hiv64148/data/blast/db
 COPY ./environments /hiv64148/environments
 
-RUN ["gzip", "-d", "/hiv64148/data/LosAlamos_db.gz"]
 WORKDIR /hiv64148/data/blast/db
+RUN ["gzip", "-d", "/hiv64148/data/blast/db/LosAlamos_db.gz"]
+RUN ["wget", "ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz"]
+RUN ["tar", "xzf", "taxdb.tar.gz"]
+RUN ["rm", "taxdb.tar.gz"]
 RUN ["micromamba", "run", "-n", "venv", "makeblastdb", "-title", "LosAlamos_db", "-dbtype", "nucl", "-in", "/hiv64148/data/LosAlamos_db", "-parse_seqids", "-blastdb_version", "5"]
 RUN ["chmod", "+x", "/hiv64148/scripts/main.py"]
 RUN ["ln", "-fs", "/hiv64148/scripts/main.py", "/usr/local/bin/hiv64148"]
