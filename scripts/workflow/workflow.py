@@ -68,7 +68,8 @@ class Worker(object):
     def set_blast_db(self, blast_db):
         if BLAST.check_db('user_provided') != 0:
             BLAST.create_db('user_provided', blast_db, 'nucl')
-        self.blast_db = 'user_provided'
+        if self.blast_db != blast_db:
+            self.blast_db = 'user_provided'
 
     def get_peak_mem(self) -> dict:
         return self._stat.get('peak_mem', {})

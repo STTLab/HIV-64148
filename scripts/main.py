@@ -166,7 +166,7 @@ def main():
                     logger.warning('Database not provided for non-HIV sequences, '
                                     'switch to remote NCBI BLAST server.')
                     worker.set_blast_db('remote')
-                else:
+                elif args.db != 'LosAlamos_db':
                     worker.set_blast_db(args.db)
             if args.genome_size:
                 worker.set_genome_size(args.genome_size)
