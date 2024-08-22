@@ -121,9 +121,7 @@ def main():
         default='',
         required=False,
         # TODO: Change help text as we switched to yaml configuration.
-        help='A quoted string of custom parameters for the selected assembler\n\
-            Requires equal sign (=) after the argument.\n\
-            Example: -ag="--minTrimmedLen 500 --minOvlpLen 1000 -t 8"',
+        help='Path to a yaml file for assembler settings.',
     )
     parser.add_argument(
         '--non-hiv',
