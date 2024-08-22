@@ -11,26 +11,6 @@
     "general": {
         "logger": { "level": "DEBUG" }
     },
-    "pipeline": {
-        "settings": {
-            "strainline": {
-                "platform"      : "ont",
-                "mintrimlen"    : 1000,
-                "topk"          : 50,
-                "minoverlap"    : 1000,
-                "miniden"       : 0.99,
-                "minseedlen"    : 3000,
-                "maxoh"         : 30,
-                "iter"          : 2,
-                "maxgd"         : 0.01,
-                "maxld"         : 0.001,
-                "maxco"         : 5,
-                "min_abun"      : 0.02,
-                "rm_mis_asm"    : false,
-                "err_cor"       : true
-            }
-        }
-    },
     "data": {
         "blast": {
             "db_dir": "/hiv64148/data/blast/db",

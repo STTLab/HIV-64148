@@ -26,3 +26,4 @@ urllib3==1.26.15
 voluptuous==0.13.1
 yarl==1.8.2
 yattag==1.15.1
+PyYAML==6.0.2

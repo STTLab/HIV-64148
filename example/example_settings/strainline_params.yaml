@@ -1,0 +1,34 @@
+# Parameters taken from Strainline repository as of 2024-08-22
+# Accessible via https://github.com/HaploKit/Strainline
+
+# You can modify these values according to your needs and point
+# -ag/--assembler-args argument to this file i.e. -ag <path-to-file>/strainline_params.yaml
+
+# Minimum trimmed read length. (default: 1000)
+minTrimmedLen: 1000
+# Choose top k seed reads. (default: 50)
+topk: 50
+# Minimum read overlap length. (default: 1000)
+minOvlpLen: 1000
+# Minimum identity of overlaps. (default: 0.99)
+minIdentity: 0.99
+# Minimum seed read length. (default: 3000)
+minSeedLen: 3000
+# Maximum overhang length allowed for overlaps. (default: 30)
+maxOH: 30
+# Number of iterations for contig extension. (default: 2)
+iter: 2
+# Maximum global divergence allowed for merging haplotypes. (default: 0.01)
+maxGD: 0.01
+# Maximum local divergence allowed for merging haplotypes. (default: 0.001)
+maxLD: 0.001
+# Maximum overhang length allowed for contig contains. (default: 5)
+maxCO: 5
+# Minimum abundance for filtering haplotypes (default: 0.02)
+minAbun: 0.02
+# Break contigs at potential misassembled positions (default: False)
+rmMisassembly: false
+# Perform error correction for input reads (default: True)
+correctErr: true
+# Number of processes to run in parallel (default: 8).
+threads: 8

@@ -1,0 +1,48 @@
+# Parameters taken from RVHaplo repository as of 2024-08-21
+# Accessible via https://github.com/dhcai21/RVHaplo
+
+# You can modify these values according to your needs and point
+# -ag/--assembler-args argument to this file i.e. -ag <path-to-file>/rvhaplo_params.yaml
+
+# Number of CPU cores for multiprocessing. (default: 8)
+thread: 8
+# Smallest mapping quality for reads. (default: 0)
+map_qual: 0
+# Sequencing error rate. (default: 0.1)
+error_rate: 0.10
+# Significance level for binomial tests. (default: 0.05)
+signi_level: 0.05
+# A threshold of the maximum conditional probability for SNV sites. (default: 0.65)
+cond_pro: 0.65
+# The most dominant base' frequency at a to-be-verified site should >= fre_snv. (default: 0.80)
+fre_snv : 0.80
+# Minimum # of reads for calculating the conditional probability given one conditional site. (default: 10)
+num_read_1: 10
+# Minimum # of reads for calculating the conditional probability given more than one conditional sites. (default: 5)
+num_read_2: 5
+# Minimum length of gap between SNV sites for calculating the conditional probability. (default: 15)
+gap: 15        
+# Minimum # of SNV sites for haplotype construction. (default: 20)
+smallest_snv: 20
+# Minimum length of overlap for creating edges between two read in the read graph. (default: 5)
+overlap_read: 5
+# Minimum weights of edges in the read graph. (default: 0.85)
+weight_read: 0.85
+# Number of subgraphs to run MCL (default:1)
+sub_graph: 1
+# Inflation of MCL algorithm. (default:2)
+mcl_inflation: 2
+# A threshold for seperating clusters into two groups based on sizes of clusters. (default: 50)
+lar_cluster: 50
+# A parameter related to the minimum overlap between consensus sequences of clusters. (default: 10)
+overlap_cluster: 10
+# Depth limitation for consensus sequences generated from clusters. (default: 5)
+depth: 5
+# Minimum weights between clusters in the hierarchical clustering (default: 0.8)
+weight_cluster: 0.8
+# Starting position for generating consensus sequences (default: 1)
+start_pos: 1
+# Ending position for generating consensus sequences. (default: 1e10)
+end_pos: 1e10
+# A threshold for filtering low-abundance haplotypes. (default: 0.005)
+abundance: 0.005

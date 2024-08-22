@@ -1,0 +1,20 @@
+# Parameters taken from Canu documentation as of 2024-08-22
+# Accessible via https://canu.readthedocs.io/en/latest/parameter-reference.html
+
+# You can modify these values according to your needs and point
+# -ag/--assembler-args argument to this file i.e. -ag <path-to-file>/canu_params.yaml
+
+# Note:
+# Settings listed here are just common settings, plese refer to the documentation
+# for the full list, all of the parameters can be set in this file, following yaml format.
+
+# Reads shorter than this are not loaded into the assembler. (default: 1000)
+minReadLength: 1000
+# Overlaps shorter than this will not be discovered. (default: 500)
+minOverlapLength: 500
+# After loading all reads into the sequence store, discard some reads so that this amount of coverage remains. (default: not set)
+readSamplingCoverage:
+# Adjust the sampling bias towards discarding longer (negative numbers) or shorter (positive numbers) reads. (default: 0.0)
+readSamplingBias: 0.0
+# use MHAP overlapping for all steps, making assembly significantly faster but less contiguous. (default: not used)
+fast: false

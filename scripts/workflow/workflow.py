@@ -28,21 +28,48 @@ from .components import BLAST, strainline, nanoplot_qc
 
 class Worker(object):
 
-    def __init__(self, assembler='strainline', asm_args=None) -> None:
+    def __init__(
+        self,
+        assembler='strainline',
+        tech='nanopore',
+        quality='raw',
+        asm_args=None,
+        **kwargs
+    ) -> None:
         self.assembler = assembler
         self._stat = {
             't_created': time.time(),
             'peak_mem': {}
         }
+        self.tech = tech
+        self.quality = quality
         self.asm_args = asm_args
-        self.make_report = True
+        self.non_hiv = kwargs.get('non_hiv', False)
         self.output_dir = ''
         self.job_id = uuid4()
         self._input_fastq = ''
         self.reference = None
+        self.blast_db = settings['data']['blast']['dbtitle']
+        self.genome_size = None
 
     def set_reference(self, reference_path):
         self.reference = reference_path
+        if self.assembler in ('canu', 'strainline', 'goldrush', 'flye'):
+            logger.info('Reference genome ignored when using a de novo assembler.')
+
+    def set_genome_size(self, genome_size):
+        self.genome_size = genome_size
+        if self.assembler in ('canu', 'flye'):
+            logger.info('Using expected genome size = %s nt', genome_size)
+        else:
+            logger.info('Genome size ignored. %s does not use genome size.', self.assembler)
+
+
+    def set_blast_db(self, blast_db):
+        if BLAST.check_db('user_provided') != 0:
+            BLAST.create_db('user_provided', blast_db, 'nucl')
+        if self.blast_db != blast_db:
+            self.blast_db = 'user_provided'
 
     def get_peak_mem(self) -> dict:
         return self._stat.get('peak_mem', {})
@@ -110,18 +137,18 @@ class Worker(object):
             case 'rvhaplo':
                 # RVHaplo
                 rvhaplo(
-                    self._input_fastq,
-                    self.reference,
-                    self.output_dir,
-                    self.asm_args
+                    input_fastq=self._input_fastq,
+                    reference=self.reference,
+                    output_dir=self.output_dir,
+                    asm_settings=self.asm_args
                 )
                 logger.info('Finished - RVHaplo')
             case 'haplodmf':
                 haplodmf(
-                    self._input_fastq,
-                    self.reference,
-                    self.output_dir,
-                    self.asm_args
+                    input_fastq=self._input_fastq,
+                    reference=self.reference,
+                    output_dir=self.output_dir,
+                    asm_settings=self.asm_args
                 )
                 logger.info('Finished - HaploDMF')
             case 'goldrush':
@@ -130,13 +157,15 @@ class Worker(object):
                     self.output_dir,
                     self.asm_args
                 )
-            case 'metaflye':
+            case 'flye':
                 flye(
-                    self._input_fastq,
-                    self.output_dir,
-                    self.asm_args
+                    input_fastq=self._input_fastq,
+                    output_dir=self.output_dir,
+                    tech=self.tech,
+                    qual=self.quality,
+                    asm_settings=self.asm_args
                 )
-                logger.info('Finished - MetaFlye')
+                logger.info('Finished - Flye')
             case 'igda':
                 igda(
                     self._input_fastq,
@@ -147,9 +176,12 @@ class Worker(object):
                 logger.info('Finished - iGDA')
             case 'canu':
                 canu(
-                    self._input_fastq,
-                    self.output_dir,
-                    self.asm_args
+                    input_fastq=self._input_fastq,
+                    output_dir=self.output_dir,
+                    tech=self.tech,
+                    qual=self.quality,
+                    genome_size=self.genome_size,
+                    asm_settings=self.asm_args
                 )
                 logger.info('Finished - Canu')
             case _:
@@ -159,7 +191,8 @@ class Worker(object):
                     strainline(
                         input_fastq=f'{_tmpdir}/raw_reads.fastq',
                         output_dir=_tmpdir,
-                        asm_args = self.asm_args
+                        tech=self.tech,
+                        asm_settings=self.asm_args
                     )
                     logger.info('Moving Strainline output to %s', self.output_dir)
                     for file in glob.glob(f'{_tmpdir}/*'):
@@ -174,7 +207,7 @@ class Worker(object):
         # BLAST
         blast = BLAST.blast_nucleotide(
             f'{self.output_dir}/haplotypes.final.fa',
-            settings['data']['blast']['dbtitle'],
+            self.blast_db,
             self.output_dir
         )
         logger.info('Finished - BLASTN')
@@ -184,7 +217,7 @@ class Worker(object):
         self._stat['peak_mem']['blast'] = round(_peak/(1024^2),3) # Memory Mib
         tracemalloc.reset_peak()
 
-        if self.make_report:
+        if self.non_hiv:
             logger.info('Generating report')
             gql_schema_file = f'{Path(__file__).parent.absolute()}/../utilities/gql/sequence_analysis.gql'
             with open(gql_schema_file, 'r', encoding='utf-8') as gql_schema:

@@ -1,3 +1,6 @@
+'''
+This module contains functions for invoking genome assemblers.
+'''
 import os
 import sys
 import re
@@ -5,26 +8,35 @@ import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import subprocess
+from typing import Literal
 from multiprocessing import cpu_count
 from Bio import SeqIO
 from workflow.components import minimap2
 from utilities.logger import logger
+from utilities.file_handler import args_loader
 
-def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', asm_args=[]):
+def rvhaplo(
+        input_fastq,
+        reference,
+        output_dir,
+        asm_settings: str|os.PathLike=None,
+        prefix='rvhaplo'
+    ):
     with TemporaryDirectory() as _tmpdir:
         alignment_file = f'{_tmpdir}/alignment.sam'
         minimap2(input_fastq, reference, alignment_file)
         os.chdir('/opt/RVHaplo')
-        process = subprocess.run(
-            [
-                'micromamba', 'run', '-n', 'haplodmf',
-                'bash', './rvhaplo.sh',
-                '--input', alignment_file,
-                '-r', reference,
-                '--out', f'{_tmpdir}/{prefix}',
-                '--prefix', prefix,
-                *asm_args
-            ], check=True)
+        cmd = [
+            'micromamba', 'run', '-n', 'haplodmf',
+            'bash', './rvhaplo.sh',
+            '--input', alignment_file,
+            '-r', reference,
+            '--out', f'{_tmpdir}/{prefix}',
+            '--prefix', prefix,
+        ]
+        if asm_settings:
+            cmd.extend(args_loader(asm_settings, '--'))
+        process = subprocess.run(cmd, check=True)
         reformat_rvhaplo(
             haplotype_fa=f'{_tmpdir}/{prefix}/{prefix}_consensus.fasta',
             output=f'{output_dir}/haplotypes.final.fa'
@@ -32,22 +44,29 @@ def rvhaplo(input_fastq, reference, output_dir, prefix='rvhaplo', asm_args=[]):
     os.chdir(f'{Path(__file__).parent.absolute()}/..')
     return process.returncode
 
-def haplodmf(input_fastq, reference, output_dir, prefix='haplodmf', asm_args=[]):
-    logger.debug('Begin reconstruction with HaploDMF')
+def haplodmf(
+        input_fastq,
+        reference,
+        output_dir,
+        asm_settings: str|os.PathLike=None,
+        prefix='haplodmf'
+    ):
+    logger.info('Begin reconstruction with HaploDMF')
     with TemporaryDirectory() as _tmpdir:
         alignment_file = f'{_tmpdir}/alignment.sam'
         minimap2(input_fastq, reference, alignment_file)
         os.chdir('/opt/HaploDMF')
-        process = subprocess.run(
-            [
+        cmd = [
                 'micromamba', 'run', '-n', 'haplodmf',
                 'bash', './haplodmf.sh',
                 '--input', alignment_file,
                 '-r', reference,
                 '--out', f'{_tmpdir}/{prefix}',
                 '--prefix', prefix,
-                *asm_args
-            ], check=True)
+            ]
+        if asm_settings:
+            cmd.extend(args_loader(asm_settings, '--'))
+        process = subprocess.run(cmd, check=True)
         reformat_rvhaplo(
             haplotype_fa=f'{_tmpdir}/{prefix}/{prefix}_consensus.fasta',
             output=f'{output_dir}/haplotypes.final.fa'
@@ -60,7 +79,8 @@ def reformat_rvhaplo(haplotype_fa, output):
     reformatted = []
     for seq in ori:
         seq_id_ori = seq.id.split('_')
-        seq.id = f'{seq_id_ori[0]}_{seq_id_ori[1]} {int(float(seq_id_ori[11]))}x freq={round(float(seq_id_ori[5]), 3)}'
+        seq.id = f'{seq_id_ori[0]}_{seq_id_ori[1]} {int(float(seq_id_ori[11]))}\
+            x freq={round(float(seq_id_ori[5]), 3)}'
         reformatted.append(seq)
     SeqIO.write(reformatted, output, 'fasta')
     return
@@ -85,32 +105,34 @@ def reformat_goldrush(haplotype_fa, output):
     SeqIO.write(reformatted, output, 'fasta')
     return
 
-def flye(input_fastq, output_dir, *args, **kwargs):
+def flye(
+        input_fastq,
+        output_dir,
+        tech: Literal['nanopore', 'pacbio'],
+        qual: Literal['raw', 'corrected', 'hifi', 'hq'],
+        asm_settings: str|os.PathLike=None,
+        genome_size=None
+    ):
     '''
-    Run de novo haplotype reconstruction with MetaFlye
+    Run de novo haplotype reconstruction with Flye
     '''
-    # kwags processing
-    min_overlap = kwargs.get('min_overlap', 1000)
-    read_error = kwargs.get('read_error', 0.0)
-    keep_haplotypes = kwargs.get('keep_haplotypes', True)
-    metagenomic_mode = kwargs.get('metagenomic_mode', True)
-
     with TemporaryDirectory() as _tmpdir:
         raw_reads = f'{_tmpdir}/raw_reads.fastq'
         os.symlink(input_fastq, raw_reads)
         cmd = [
-            'micromamba', 'run', '-n', 'venv',
-            'flye', '--nano-hq', raw_reads,
-            '--genome-size', '10k',
-            '--min-overlap', str(min_overlap),
-            '--read-error', str(read_error),
-            '--out-dir', _tmpdir,
-            '--scaffold'
+            'micromamba', 'run', '-n', 'venv', 'flye'
         ]
-        if metagenomic_mode:
-            cmd.append('--meta')
-        if keep_haplotypes:
-            cmd.append('--keep-haplotypes')
+        if genome_size:
+            cmd.extend(['--genome-size', genome_size])
+        if asm_settings:
+            cmd.extend(args_loader(asm_settings, '--'))
+
+        if tech == 'nanopore':
+            tech = 'nano'
+        if qual == 'corrected':
+            qual = 'corr'
+        cmd.extend([f'--{tech}-{qual}', raw_reads])
+
         process = subprocess.run(cmd, check=True)
 
         final_assembly = f'{_tmpdir}/assembly.fasta'
@@ -179,16 +201,41 @@ def igda(input_fastq, reference, output_dir, threads=cpu_count()):
         reformat_goldrush(f'{_tmpdir}/phased_snvs/contigs.fa', f'{output_dir}/haplotypes.final.fa')
         return process.returncode
 
-def canu(input_fastq, output_dir, prefix='canu', asm_args=[]):
+def canu(
+        input_fastq,
+        output_dir,
+        tech: Literal['nanopore', 'pacbio'],
+        qual: Literal['raw', 'corrected', 'hifi', 'hq'],
+        genome_size,
+        asm_settings: str|os.PathLike=None,
+        prefix='canu',
+    ):
     with TemporaryDirectory() as _tmpdir:
         raw_reads = f'{_tmpdir}/raw_reads.fastq'
         os.symlink(input_fastq, raw_reads)
         cmd = [
             'micromamba', 'run', '-n', 'canu',
-            'canu', 'genomeSize=9.8k',
+            'canu', f'genomeSize={genome_size}',
             '-p', prefix, '-d', _tmpdir,
-            *asm_args, '-nanopore', raw_reads
         ]
+
+        if qual == 'raw' or qual == 'corrected':
+            cmd.append(f'-{qual}')
+        else: # hifi or hq
+            cmd.append('-corrected')
+
+        if tech == 'nanopore':
+            cmd.extend(['-nanopore', raw_reads])
+        elif tech == 'pacbio':
+            if qual =='hifi':
+                cmd.extend(['-pacbio-hifi', raw_reads])
+            else:
+                cmd.extend(['-pacbio', raw_reads])
+
+        if asm_settings:
+            # Creates something like `arg=value``
+            cmd.extend(args_loader(asm_settings, '', '='))
+
         process = subprocess.run(cmd, check=True)
         final_assembly = f'{_tmpdir}/{prefix}.contigs.fasta'
         if os.path.exists(final_assembly):
