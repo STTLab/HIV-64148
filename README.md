@@ -75,7 +75,9 @@ docker run \
 
 ### Customize assembler parameters
 
-Customized parameters for each assembler can be pass through with `-ag=` or `--assember-args=` argument, for the supported assembler argument, please refer to the documentation of your selected assembler.
+Customized parameters for each assembler can be configured using yaml file, please refer to the documentation of your selected assembler.
+
+Examples of yaml configuration files can be found within an example folder.
 
 ```shell
 docker run \
