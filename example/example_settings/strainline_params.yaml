@@ -31,4 +31,4 @@ rmMisassembly: false
 # Perform error correction for input reads (default: True)
 correctErr: true
 # Number of processes to run in parallel (default: 8).
-threads: true
+threads: 8
