@@ -1,3 +1,9 @@
+# Parameters taken from Flye repository as of 2024-08-22
+# Accessible via https://github.com/mikolmogorov/Flye/blob/flye/docs/USAGE.md
+
+# You can modify these values according to your needs and point
+# -ag/--assembler-args argument to this file i.e. -ag <path-to-file>/flye_params.yaml
+
 # number of parallel threads (default: 1)
 threads: 1
 # number of polishing iterations (default: 1)
