@@ -55,7 +55,7 @@ docker run \
     hiv64148 run \
         -i /workspace/Simulated_x2_Major_subtype_example_1.fastq \
         -o /workspace/example_output \
-        -a strainline -ag="--minTrimmedLen 500 --minOvlpLen 1000 -t 1"
+        -a strainline -ag /workspace/example_settings/strainline_params.yaml
 ```
 
 ### Switching between assemblers
@@ -87,18 +87,12 @@ docker run \
         -i /workspace/${YOUR_FASTQ} \
         -o /workspace/${YOUR_OUTPUT} \
         --assember strainline \
-        --assember-args="--minTrimmedLen 500 --minOvlpLen 1000 -t 1"
+        --assember-args /workspace/example_settings/strainline_params.yaml
 ```
-
-### Offline functionality
-
-This pipeline can be used offline with a limitation in accessing online database i.e. [Stanford HIV database](https://hivdb.stanford.edu/) the assembly and subtype identification with BLASTN will function normally and report will be generated as usual, however mutation and drug resistant profiles will be left blank. Noted that building the Docker image or installing additional assembler requires the Internet connection. The recomended workaround is to build the image on an online machine then install the desired assembler to the container and package it with `docker save` or creating a Singularity image.
 
 ### Assembly other viral genomes
 
-This pipeline can be use to assemble genome of other viral genomes as well, for de novo assemblers, Canu, MetaFlye and GoldRush, the expected genome size must be changed to the size of your desired organism \(default: 9.8k for HIV-1 genome\), you can alter this value within the source code in `scripts/workflow/alternative_tools.py`. After the change, the Docker image must be rebuild with the same command specified above.
-
-> Noted that the down-stream analyses are designed for use with HIV-1 genome only, for assembly of other viruses, `--no-report` argument should be specified to output only the assembly FASTA file.
+This pipeline can be use to assemble genome of other viral genomes as well, for de novo assemblers, Canu, MetaFlye and GoldRush, the expected genome size must be changed to the size of your desired organism \(default: 9.8k for HIV-1 genome\) by providing an `-g/--genome-size` argument.
 
 For reference based assember the reference can be changed with `-r` or `--reference` parameter, no rebuild required.
 
