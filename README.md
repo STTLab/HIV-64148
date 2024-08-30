@@ -119,7 +119,7 @@ ${output_directory}/
 │  └─ NanoStats.txt
 ├─ haplotype.blast.csv
 ├─ haplotypes.final.fasta
-└─ hiv-64148_report.html
+└─ hiv-64148_report.html  # Will not be produced in non-HIV mode
 ```
 
 ## Acknowledgement
